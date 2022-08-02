@@ -1,0 +1,95 @@
+<div id="pltitle" style="text-align:left; padding: 10px ">
+<h2 style="font-size:40px">🎵 {{list.name}}</h2>
+<h3>a playlist for {{list.productname}}</h3>
+<p>Category: {{category}}</p>
+<p>Scents: {{scent}}</p>
+<p>{{time}}</p>
+<p>by {{list.username}}</p>
+{{!-- <p>Here are the songs:</p> --}}
+</div>
+
+
+<form method="POST" action="">
+    <input type="hidden" name="songName" value="{{list.slug}}">
+    <input type="hidden" name="songId" value="{{list._id}}">
+    <input id="linkToSpotify" type = "submit" value ="Create on Spotify">
+</form>
+
+
+<div class="container">
+    {{#if songs}}
+    <div id="embed-iframe">
+        <iframe style="border-radius:12px"
+                src="https://open.spotify.com/embed/track/{{currentSongId}}?utm_source=generator"
+                width="100%" height="80" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
+        </iframe>
+    </div>
+    {{else}}
+    <h2> <br><br> Nothing here yet :( <br><br><br><br><br></h2>
+    {{/if}}
+    {{#if userMatch}}
+<!--        <form method="POST" action="/list-item/create">-->
+<!--            <input required type="text" name = "title" maxlength="100" placeholder="Song title">-->
+<!--            <input required type="text" name = "artist" maxlength="20" placeholder="Artist">-->
+<!--            <input type="hidden" name="listSlug" value="{{list.slug}}">-->
+<!--            <input id="addBtn" type="submit" value="Add to playlist">-->
+<!--        </form>-->
+    {{/if}}
+
+    <div class="container__row">
+        {{#if userMatch}}
+            {{#each songs}}
+                <div class="container__col">
+                    <img style="justify-content: start" src={{this.cover}} alt="album_cover" width="100" height="100">
+                    <a id="songName" href={{this.external_urls}}> &nbsp &nbsp &nbsp {{this.name}} - {{this.artists}} </a>
+                    <form method="GET" action="">
+                        <input type="hidden" name="playSongId" value="{{this.id}}">
+                        <input id="delBtn" type="submit" value="play"/>
+                    </form>
+                    <div style="align-content: end" >
+                        <form method="POST" action="">
+                            <input type="hidden" name="songName" value="{{this.name}}">
+                            <input type="hidden" name="songId" value="{{this.id}}">
+                            <input id="delBtn" type = "submit" onclick="return confirm('Are you sure you want to delete this track?');" value ="Delete">
+                        </form>
+                    </div>
+                </div>
+            {{/each}}
+        {{else}}
+            {{#each songs}}
+                    <div class="container__col">
+                        <img style="justify-content: start" src={{this.cover}} alt="album_cover" width="100" height="100">
+                        <a id="songName" href={{this.external_urls}}> &nbsp &nbsp &nbsp {{this.name}} - {{this.artists}} </a>
+                        <form method="GET" action="">
+                            <input type="hidden" name="playSongId" value="{{this.id}}">
+                            <input id="delBtn" type="submit" value="play"/>
+                        </form>
+                    </div>
+            {{/each}}
+        {{/if}}
+
+    </div>
+
+    {{#if userMatch}}
+        <form method="POST" action="/list-item/create">
+            <input required type="text" name = "title" maxlength="100" placeholder="Song title">
+            <input required type="text" name = "artist" maxlength="20" placeholder="Artist">
+            <input type="hidden" name="listSlug" value="{{list.slug}}">
+            <input id="addBtn" type="submit" value="Add to playlist">
+        </form>
+    {{/if}}
+</div>
+<!--<script src="https://open.spotify.com/embed/track/iframe-api/v1" async></script>-->
+<!--<script type="text/javascript">-->
+<!--    window.onSpotifyIframeApiReady = (IFrameAPI) => {-->
+<!--        let element = document.getElementById('embed-iframe');-->
+<!--        let options = {-->
+<!--            width: '100%',-->
+<!--            height: '200',-->
+<!--            uri: 'spotify:track:63OemEo5x866TOhGpxfuAz'-->
+<!--        };-->
+<!--        let callback = (EmbeddedController)=>{};-->
+<!--        IFrameAPI.createController(element, options, callback);-->
+<!--    };-->
+<!--</script>-->
+<!--<script src="public/js/main.js"></script>-->

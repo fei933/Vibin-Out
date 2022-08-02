@@ -1,0 +1,31 @@
+<div style="margin: 8px">
+    <h2>Explore different scent of music...</h2>
+    <form method="POST" action="">
+        <div style="display: block; font-size: 15px" >
+        <input style="display:block" type="text" name = "query" maxlength="100" placeholder="I'm interested in...">
+        <input type="radio" name="context" value="artist"><label>Playlist Name</label>
+        <input type="radio" name="context" value="track"><label>Track name</label>
+        <input type="radio" name="context" value="all" checked="true"><label>All</label>
+        </div>
+        <input style="display: inline-block; font-size: 14px" id="searchBtn" type="submit" value="Fuzzy Search">
+    </form>
+</div>
+
+
+<div class="cards">
+    <!-- A card with given width -->
+    {{#each pl}}
+        <div class="cards__item">
+            <img id="profileImage" style="justify-content: start" src= "https://source.unsplash.com/random/?{{this.productname}}" width="200" height="200">
+            <a id="songName" href="/list/{{slug}}"> {{name}} </a>
+            <p id="description">by {{username}}</p>
+            <p id="description">{{productname}}</p>
+            <div style="align-content: end">
+                <form method="POST" action="">
+                    <input type="hidden" name="listId" value="{{this._id}}">
+                    <input type="hidden" name="listSlug" value="{{this.slug}}">
+                </form>
+            </div>
+        </div>
+    {{/each}}
+</div>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+	<head>
+		<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/282/282151.png" />
+		<title>Vibin' Out.</title>
+		<link rel='stylesheet' href='/stylesheets/style.css'>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Serif:wght@300&display=swap" rel="stylesheet">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat&family=Roboto+Serif:wght@300&display=swap" rel="stylesheet">    </head>
+<body>
+	<div style="text-align:center" id="hd">
+        <h1 style="text-align:center">Vibin' Out.</h1>
+        <a href="/">Home</a> |
+        <a href="/list/">Public Playlists</a> |
+        <a href="/product-view">All Products </a>
+		{{!-- <a href="/list/spotify-login">Login to Spotify</a> --}}
+			{{#if user}}
+
+				<span> | {{user.username}} (<a style="text-decoration:underline" href="/logout">Logout</a>)
+				<a href="/profile">| My Profile</a>
+                <a href="/list/create">| Create New Playlist</a>
+				</span>
+			{{else}}
+				<a href="/register"> | Register</a>
+            	<a href="/login"> | Log in</a>	
+			{{/if}}
+		</div>
+	<br><br>
+	<div id="wrapper">
+		<div id="bd">
+			{{{body}}}
+		</div>
+			<div id="ft">	
+		</div>
+	</div>
+	</body>
+</html>

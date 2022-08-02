@@ -1,0 +1,69 @@
+<h2>Create a New Playlist</h2>
+<form action="/list/create" method="POST">
+<div class='form-row'>
+    <label id="create">Name</label>
+    <input id="create" type="text" name="name">
+    <br>
+    <label id="create">Product</label>
+    <input id="create" type="text" name="prodname">
+    <br>
+    <label id="create">Product Brand</label>
+    <input id="create" type="text" name="prodbrand">
+    <br>
+    <label id="create">Product Description</label>
+    <input id="create" type="text" name="proddescript">
+    <br>
+    <label id="create" for="prodtype">Product Type</label>
+    <select name="prodtype" id="prodtype">
+        <option value="candle">Candle</option>
+        <option value="perfume">Perfume</option>
+    </select>
+    <br>
+    <label id="create" for="generatetype">How would you like to generate the playlist?</label>
+    <select name="generatetype" id="generatetype">
+        <option value="recommendation">Recommendation</option>
+        <option value="self">I'll add the songs myself</option>
+    </select>
+    <br>
+    <br>
+    <fieldset>
+        <legend>What are the prominent scents of this product?</legend>
+        <div>
+            <input type="checkbox" id="floral" name="scent" value="floral">
+            <label for="floral">Floral</label>
+        </div>
+        <div>
+            <input type="checkbox" id="fruity" name="scent" value="fruity">
+            <label for="fruity">Fruity</label>
+        </div>
+        <div>
+            <input type="checkbox" id="citrus" name="scent" value="citrus">
+            <label for="citrus">Citrus</label>
+        </div>
+        <div>
+            <input type="checkbox" id="woody" name="scent" value="woody">
+            <label for="woody">Woody</label>
+        </div>
+        <div>
+            <input type="checkbox" id="herbs" name="scent" value="herbs">
+            <label for="herbs">Herbs</label>
+        </div>
+        <div>
+            <input type="checkbox" id="oriental" name="scent" value="oriental">
+            <label for="oriental">Oriental</label>
+        </div>
+        <div>
+            <input type="checkbox" id="oceanic" name="scent" value="oceanic">
+            <label for="oceanic">Oceanic</label>
+        </div>
+        <div>
+            <input type="checkbox" id="spicy" name="scent" value="spicy">
+            <label for="spicy">Spicy</label>
+        </div>
+    </fieldset>
+
+</div>
+<div class='form-row'>
+    <input id="create" type="submit" value="Create List">
+</div>
+</form>

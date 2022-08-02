@@ -1,0 +1,224 @@
+body {
+  font-family: "Montserrat";
+  font-weight: normal;
+  padding-top: 6%;
+  padding-right: 10%;
+  padding-left: 10%;
+  padding-bottom: 10%;
+}
+
+.hd {
+  width: 100%;
+  background-color: cornflowerblue;
+}
+
+p {
+  font-weight: normal;
+}
+p[id=userInfo] {
+  font-size: 13px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+p[id=description] {
+  color: #989898;
+  font-size: 12px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+#table {
+  width: 100%;
+}
+
+#songName {
+  color: #eeeeee;
+}
+
+a {
+  color: rgb(37, 37, 37);
+  font-weight: normal;
+}
+a:link, a:visited, a:hover, a:active {
+  text-decoration: none;
+}
+a[id=editSelfInfo] {
+  background-color: #88d8b0;
+}
+a[id=product] {
+  color: #262626;
+  padding: 10px;
+}
+
+.form-row {
+  padding: 0.5em;
+  text-align: center;
+}
+
+.regbox {
+  text-align: center;
+  display: inline-block;
+}
+
+form {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+#wrapper {
+  position: relative;
+  padding: 1em;
+  background-color: #eee;
+}
+#wrapper[id=linkToSpotify] {
+  text-align: left;
+}
+
+.qty {
+  width: 3em;
+}
+
+input {
+  font-size: 1em;
+  font-family: "Montserrat";
+  display: inline-block;
+  width: auto;
+}
+input[type=submit] {
+  padding: 5px 15px;
+  background: rgb(37, 37, 37);
+  color: aliceblue;
+  border: 0 none;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 1em;
+}
+input[type=submit]:hover {
+  background-color: rgba(218, 191, 233, 0.7058823529);
+  color: white;
+}
+input[id=delBtn] {
+  background: rgba(195, 211, 248, 0.51);
+  padding: 3px 3px;
+  margin: 5px;
+  font-size: 12px;
+}
+input[id=delBtn]:hover {
+  background-color: rgba(218, 191, 233, 0.7058823529);
+  color: white;
+}
+input[id=searchBtn] {
+  background: rgba(37, 37, 37, 0.84);
+  font-size: 12px;
+}
+input[id=searchBtn]:hover {
+  background-color: #daaa37;
+  color: white;
+}
+input[id=linkToSpotify] {
+  text-align: left;
+}
+input[id=linkToSpotify]:hover {
+  background-color: rgba(110, 215, 98, 0.71);
+  color: #ffffff;
+}
+input[id=create] {
+  text-align: left;
+  display: block;
+}
+input[id=delPlaylist] {
+  font-size: 12px;
+  background: rgba(195, 211, 248, 0.51);
+  padding: 5px 5px;
+}
+
+select {
+  font-family: "Montserrat";
+}
+select[id=prodtype] {
+  display: block;
+  text-align: left;
+}
+select[id=generatetype] {
+  display: block;
+  text-align: left;
+}
+
+label[id=create] {
+  text-align: left;
+  display: block;
+  font-size: 14px;
+}
+
+fieldset {
+  text-align: left;
+  font-size: 14px;
+}
+
+.container {
+  margin: 0 auto;
+}
+.container--fluid {
+  margin: 0;
+  max-width: 100%;
+}
+.container__row {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.container__col {
+  flex-basis: 100%;
+}
+
+.container {
+  padding: 10px;
+  box-sizing: border-box;
+}
+.container__col {
+  height: 100px;
+  color: #FFFFFF;
+  background-image: linear-gradient(rgb(37, 37, 37), #565555);
+  border-radius: 2em;
+  margin: 5px 0;
+  display: flex;
+  align-items: center;
+}
+.container__col[id=product] {
+  flex: 2;
+  font-size: 15px;
+  height: 80px;
+  margin: 5px 5px auto;
+  border-width: 10pt;
+  padding: 10px;
+  border-radius: 1.5em;
+  background: #ffffff;
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: -8px;
+  margin-right: -8px;
+}
+.cards .cards__item {
+  background-color: rgba(38, 38, 38, 0.94);
+  margin: auto;
+  margin-bottom: 8px;
+  border-radius: 0.5em;
+  padding-left: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-right: 10px;
+}
+
+img[id=profileImage] {
+  border-radius: 0.5em;
+  margin: auto;
+  padding-bottom: 10px;
+  text-align: center;
+  position: relative;
+  display: flex;
+}
+
+/*# sourceMappingURL=style.css.map */

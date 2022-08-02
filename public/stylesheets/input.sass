@@ -1,0 +1,206 @@
+body
+  font-family: 'Montserrat'
+  font-weight: normal
+  padding-top: 6%
+  padding-right: 10%
+  padding-left: 10%
+  padding-bottom: 10%
+
+.hd
+  width: 100%
+  background-color: cornflowerblue
+
+
+p
+  font-weight: normal
+  &[id=userInfo]
+    font-size: 13px
+    margin-top: 5px
+    margin-bottom: 5px
+  &[id=description]
+    color: #989898
+    font-size: 12px
+    margin-top: 5px
+    margin-bottom: 5px
+#table
+  width: 100%
+
+#pltitle
+  // font-family: 'Georgia'
+
+#songName
+  color: #eeeeee
+
+a
+  color: rgb(37, 37, 37)
+  font-weight: normal
+  &:link, &:visited, &:hover, &:active
+    text-decoration: none
+  &[id=editSelfInfo]
+    background-color: #88d8b0
+  &[id=product]
+    color: #262626
+    padding: 10px
+
+
+.form-row
+  padding: 0.5em
+  text-align: center
+  //display: inline-block
+
+.regbox
+  text-align: center
+  display: inline-block
+
+form
+  margin-top: 1em
+  margin-bottom: 1em
+
+#wrapper
+  position: relative
+  //text-align: center
+  padding: 1em
+  background-color: #eee
+  &[id=linkToSpotify]
+    text-align: left
+
+.qty
+  width: 3em
+
+input
+  font-size: 1em
+  font-family: 'Montserrat'
+  &[type="radio"]
+  display: inline-block
+  width: auto
+
+  &[type=submit]
+    padding: 5px 15px
+    background: rgb(37, 37, 37)
+    color: aliceblue
+    border: 0 none
+    cursor: pointer
+    border-radius: 5px
+    font-size: 1em
+    &:hover
+      background-color: #dabfe9b4
+      color: white
+  &[id=delBtn]
+    background: rgba(195, 211, 248, 0.51)
+    padding: 3px 3px
+    margin: 5px
+    font-size: 12px
+    &:hover
+      background-color: #dabfe9b4
+      color: white
+  &[id=searchBtn]
+    background: rgba(37, 37, 37, 0.84)
+    //padding: 5px 5px
+    //margin: 10px
+    font-size: 12px
+    &:hover
+      background-color: #daaa37
+      color: white
+  &[id=linkToSpotify]
+    text-align: left
+    &:hover
+      background-color: rgba(110, 215, 98, 0.71)
+      color: #ffffff
+  &[id=create]
+    text-align: left
+    display: block
+  &[id=delPlaylist]
+    font-size: 12px
+    background: rgba(195, 211, 248, 0.51)
+    padding: 5px 5px
+
+$grid__bp-md: 800
+
+select
+  &[id=prodtype]
+    display: block
+    text-align: left
+  &[id=generatetype]
+    display: block
+    text-align: left
+  font-family: 'Montserrat'
+
+
+label
+  &[id=create]
+    text-align: left
+    display: block
+    font-size: 14px
+
+
+fieldset
+  text-align: left
+  font-size: 14px
+
+
+.container     
+  // max-width: $grid__bp-md * 1px    
+  margin: 0 auto    
+  &--fluid     
+    margin: 0    
+    max-width: 100%    
+      
+  &__row
+    display: flex    
+    flex-wrap: wrap    
+    width: 100%
+      
+  &__col     
+    // flex-basis: (100 / 4 ) * 1%
+    flex-basis: 100%
+    
+
+.container
+  //background-color: #000000
+  padding: 10px    
+  box-sizing: border-box    
+  &__row     
+    //background-color: #000000
+      
+  &__col     
+    height: 100px    
+    color: #FFFFFF
+    background-image: linear-gradient(rgb(37, 37, 37), #565555)
+    border-radius: 2em
+    margin: 5px 0
+    display: flex
+    align-items: center
+    &[id=product]
+      flex: 2
+      font-size: 15px
+      height: 80px
+      margin: 5px 5px auto
+      border-width: 10pt
+      padding: 10px
+      border-radius: 1.5em
+      background: #ffffff
+
+.cards
+  display: flex
+  flex-wrap: wrap
+  margin-left: -8px
+  margin-right: -8px
+
+  .cards__item
+    background-color: rgba(38, 38, 38, 0.94)
+    margin: auto
+    margin-bottom: 8px
+    border-radius: 0.5em
+    padding-left: 10px
+    padding-top: 10px
+    padding-bottom: 10px
+    padding-right: 10px
+
+img
+  &[id=profileImage]
+    border-radius: 0.5em
+    margin: auto
+    padding-bottom: 10px
+    text-align: center
+    position: relative
+    display: flex

@@ -1,0 +1,38 @@
+
+
+<div id="product" class="container">
+    <h2>All Products</h2>
+    <br><br><br><br>
+    <div id="product" class="container__row">
+            {{#each pr}}
+            <div id="product" class="container__col">
+                <a id="product"> {{this.name}} </a>
+            </div>
+            {{/each}}
+    </div>
+</div>
+<br><br><br>
+<h3>Wanna add a new product? </h3>
+<form action ="/product-view" method = "POST">
+
+    <label for="name">Product Name:</label>
+    <input type="text" name="name" value={{name}}>
+    <br><br>
+    <label for="cagetory">Category:</label>
+    <select name="category" id="category">
+        <option value="All" selected>All</option>
+        <option value="candle">Candle</option>
+        <option value="perfume">Perfume</option>
+    </select>
+    <br><br>
+    <label for="brand">Brand:</label>
+    <input type="text" name="brand" value={{brand}}>
+    <br><br>
+    {{!-- <label for="professor">Scent:</label>
+    <input type="text" name="professor" value={{scent}}>
+    <br><br> --}}
+    <label for="descrip">Description:</label>
+    <textarea id="text" name="descrip"></textarea>
+    <br><br>
+    <input type="submit" class="addProduct" placeholder="All">
+</form>

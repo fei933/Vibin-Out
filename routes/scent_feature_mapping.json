@@ -1,0 +1,59 @@
+{
+    "floral":{
+        "seed_genres": "happy,r-n-b,dream-pop",
+        "seed_artists": "1A9o3Ljt67pFZ89YtPPL5X",
+        "seed_tracks": "2eAvDnpXP5W0cVtiI0PUxV,3vv9phIu6Y1vX3jcqaGz5Z",
+        "max_danceability":0.5,
+        "max_energy": 0.6
+    },
+    "fruity":{
+        "seed_genres": "happy,r-n-b,",
+        "seed_artists": "163tK9Wjr9P9DmM0AVK7lm,68HocO7fx9z0MgDU0ZPHro",
+        "seed_tracks": "3VSYkAf6f46i5ZkXOHORq1"
+    },
+    "woody":{
+        "seed_genres": "chill,alternative",
+        "seed_artists": "3iOvXCl6edW5Um0fXEBRXy",
+        "seed_tracks": "0eFQWVz0qIxDOvhLpZ40P7",
+        "max_energy": 0.5
+        
+    },
+    "citrus":{
+        "seed_genres": "piano,happy,r-n-b",
+        "seed_artists": "2sSGPbdZJkaSE2AbcGOACx",
+        "seed_tracks": "1ujxjsoNvh4XgS2fUNwkZ2"
+    },
+    "oriental":{
+        "seed_genres": "mandopop,alternative,r-n-b",
+        "seed_artists": "1EowJ1WwkMzkCkRomFhui7",
+        "seed_tracks": "4WedBZTeFawYCBCgfj36iK,45QUp2Xt34SS35Kh3yQWdO",
+        "max_energy": 0.6
+    },
+    "herbs":{
+        "seed_genres": "indie,ambient,r-n-b",
+        "seed_artists": "7tYKF4w9nC0nq9CsPZTHyP",
+        "seed_tracks": "3YJJjQPAbDT7mGpX3WtQ9A",
+        "target_liveness": 0.4
+    },
+    "oceanic":{
+        "seed_genres": "rainy-day,indie-pop,chill",
+        "seed_artists": "163tK9Wjr9P9DmM0AVK7lm",
+        "seed_tracks": "6kj8TeHSns33wt1Z1wdmMx",
+        "target_tempo" : 100,
+        "target_liveness": 0.6
+    },
+    "dark":{
+        "seed_genres": "emo-rap",
+        "seed_artists": "00FQb4jTyendYWaN8pK0wa", 
+        "seed_tracks": "1CS7Sd1u5tWkstBhpssyjP,1y3r6RXiJZNBV1EI0NggpS,1G1R0XgChe18Zr1o6tlmN6",
+        "target_liveness": 0.3
+    },
+    "spicy":{
+        "seed_genres": "party,dance,techno",
+        "seed_artists": "5cj0lLjcoR7YOSnhnX0Po5",
+        "seed_tracks": "0k4d5YPDr1r7FX77VdqWez" ,
+        "min_energy": 0.6,
+        "target_danceability": 0.6 
+    }
+
+}

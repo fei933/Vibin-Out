@@ -1,0 +1,47 @@
+<h1>{{userName}}</h1>
+<!--<a id="editSelfInfo" href="/profile/edit"> edit personal info </a>-->
+{{#if userGenre}}
+<p id="userInfo" > fav genres: {{userGenre}}</p>
+{{/if}}
+{{#if userScent}}
+<p id="userInfo" > fav scents: {{userScent}}</p>
+{{/if}}
+
+<br><br><br><br>
+<h2>My Library</h2>
+<br>
+<div class="cards">
+    <!-- A card with given width -->
+    {{#each list}}
+        <div class="cards__item">
+            <img id="profileImage" style="justify-content: start" src= "https://source.unsplash.com/random/?{{this.productname}}" width="200" height="200">
+            <a id="songName" href="/list/{{this.slug}}"> {{this.name}} </a>
+            <div style="align-content: end">
+                <form method="POST" action="">
+                    <input type="hidden" name="listId" value="{{this._id}}">
+                    <input type="hidden" name="listSlug" value="{{this.slug}}">
+                    <input onclick="return confirm('Are you sure you want to delete this playlist?');" id="delPlaylist" type = "submit" value ="Delete">
+                </form>
+            </div>
+        </div>
+    {{/each}}
+</div>
+
+<!--<div class="container">-->
+<!--    <div class="container__row">-->
+<!--        {{#each list}}-->
+<!--            <div class="container__col">-->
+<!--                <img style="justify-content: start" src= "https://source.unsplash.com/random/?{{this.productname}}" width="100" height="100">-->
+<!--                <a id="songName" href="/list/{{this.slug}}"> {{this.name}} </a>-->
+<!--                <div style="align-content: end">-->
+<!--                    <form method="POST" action="">-->
+<!--                        <input type="hidden" name="songName" value="{{this.name}}">-->
+<!--                        <input type="hidden" name="songId" value="{{this.id}}">-->
+<!--                        <input id="delBtn" type = "submit" value ="Delete">-->
+<!--                    </form>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        {{/each}}-->
+<!--    </div>-->
+
+<!--</div>-->

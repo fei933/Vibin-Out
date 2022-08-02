@@ -1,0 +1,18 @@
+
+<form id="regbox" action="/register" method="POST" action="">
+	<div class='form-row'>
+        <label>Username:</label> 
+        <input name="username" type="text">
+    </div>
+	<div class='form-row'>
+        <label>Password:</label> 
+        <input name="password" type="password">
+    </div>
+	<div class='form-row'>
+        <input type="submit" value="Register">
+    </div>
+    {{#if message}}
+        <p>{{message}}</p>
+    {{/if}}
+	<div class='form-row'>Already have an account? <a style="text-decoration:underline" href="/login">Login</a>.</div>
+</form>
