@@ -1,6 +1,6 @@
 # Vibin' Out.
 
-link to the deployed website: https://vibinout.herokuapp.com/
+link to the deployed website: https://vibinout.herokuapp.com/ (the website is currently down, still in the process of re-deploying it)
 
 ## Overview
 
