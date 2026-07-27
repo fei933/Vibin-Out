@@ -81,7 +81,9 @@ mongoose.model('Playlist', Playlist, 'Playlist');
 mongoose.model('Song', Song, 'Song');
 // mongoose.connect('mongodb://localhost/playlistdb');
 
-mongoose.connect(process.env.MONGODB_URI, (err) => {
+// small pool: on Vercel each serverless instance holds its own pool, and
+// Atlas M0 caps total connections at 500
+mongoose.connect(process.env.MONGODB_URI, { maxPoolSize: 10 }, (err) => {
   if (err) {
     console.log(err);
   } else {

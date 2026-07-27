@@ -1,7 +1,7 @@
 
+require('dotenv').config();
 require('./db');
 require('./auth');
-require('dotenv').config();
 
 
 const passport = require('passport');
@@ -21,12 +21,19 @@ const app = express();
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
 
-// enable sessions
+// running behind a reverse proxy on Vercel/Render — required for correct
+// client IPs and secure cookies
+app.set('trust proxy', 1);
+
+// enable sessions — backed by MongoDB so they survive serverless instance
+// recycling (in-memory sessions are lost between invocations on Vercel)
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const sessionOptions = {
-    secret: '(store this elsewhere!)',
-    resave: true,
-      saveUninitialized: true
+    secret: process.env.SESSION_SECRET || 'insecure-dev-secret',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI })
 };
 app.use(session(sessionOptions));
 
@@ -54,5 +61,11 @@ app.use('/profile', profile);
 
 
 
-const port = process.env.PORT || 3000;
-app.listen(port);
+// on Vercel the app is imported by api/index.js and run as a serverless
+// function; only bind a port when run directly (local dev, Render, etc.)
+if (require.main === module) {
+    const port = process.env.PORT || 3000;
+    app.listen(port);
+}
+
+module.exports = app;
