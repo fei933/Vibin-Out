@@ -145,6 +145,56 @@ test('a score inside tolerance is neither short nor backfilled', async () => {
   assert.equal(result.short, false);
 });
 
+/**
+ * The duration pill promises minutes, so that is what "short" means. This is
+ * the eval's fixture 3 in miniature: 17 of 18 records, but 80 of a promised
+ * 90 minutes — the promise was kept and the note must not fire.
+ */
+test('a score under its track quota that fills the runtime is NOT short', async () => {
+  const result = await generateScore(
+    { input: 'cedar', duration: 90, discovery: 'deepcuts' },
+    {
+      // 17 of the 18 the quota asks for...
+      callModel: async () => modelScore({ top: 5, heart: 8, base: 4 }),
+      // ...at 5 minutes each: 85 min, comfortably inside 72-108.
+      resolver: resolverWithDuration(5 * MIN),
+      backfillReserveMs: Infinity,
+    },
+  );
+
+  assert.equal(result.trackCount, 17);
+  assert.equal(result.expectedTrackCount, 18, 'still under quota');
+  assert.equal(result.runtimeShort, false);
+  assert.equal(result.short, false, 'track count must not drive the note');
+});
+
+test('an unverified-records score is short even when the runtime is fine', async () => {
+  const partialResolver = {
+    async resolve(candidates) {
+      return {
+        tracks: candidates.map((c, i) => ({
+          ...c,
+          spotifyId: `sp-${i}`,
+          popularity: 30,
+          durationMs: 5 * MIN,
+          indie: false,
+        })),
+        misses: [],
+        partial: true, // the provider gave up part-way through
+      };
+    },
+  };
+
+  const result = await generateScore(
+    { input: 'cedar', duration: 60, discovery: 'balanced' },
+    { callModel: async () => modelScore(), resolver: partialResolver, backfillReserveMs: Infinity },
+  );
+
+  assert.equal(result.runtimeShort, false, '12 x 5min = 60min, on target');
+  assert.equal(result.partial, true);
+  assert.equal(result.short, true, 'unverified records still earn the note');
+});
+
 test('a score running long is complete, not short', async () => {
   const result = await generateScore(
     { input: 'cedar', duration: 30, discovery: 'balanced' },
