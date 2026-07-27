@@ -135,17 +135,44 @@ Credentials come from https://developer.spotify.com/dashboard:
 
 ---
 
-## Pre-deployment Checklist
+## Deployment Status — Session Log (2026-07-27)
 
-- [x] Move session secret out of `app.js` into `process.env.SESSION_SECRET`
-- [x] Store sessions in MongoDB (`connect-mongo`) so logins survive serverless instances
-- [x] Add Vercel entry point (`api/index.js`) + `vercel.json`
-- [x] Fix Spotify token expiry in `routes/list.js` (fresh client-credentials token per request)
-- [ ] Confirm MongoDB Atlas cluster is active and `MONGODB_URI` is correct
-- [ ] Confirm Spotify API credentials are valid
-- [ ] Set all required env vars in the Vercel project settings
-- [ ] Deploy and click through register → login → create playlist → view playlist
-- [ ] Update README with new live URL once redeployed
+### Done
+
+- All serverless adaptation code is merged to `main` (PRs #1 and #2 plus sync merges); `main` is the deployable branch
+- Vercel project is created and connected to this repo with auto-deploy from `main`: **https://vibin-out.vercel.app**
+- New Atlas M0 cluster created: `primary-cluster.fiobc3h.mongodb.net` (Atlas project "Vibin Out App"), with DB user `feifeiw933_db_user`
+- Env vars added in Vercel (including `MONGODB_URI`)
+- Repo metadata in `package.json` fixed to point at `fei933/Vibin-Out` (was the old NYU class repo); `.gitignore` added
+
+### Current blocker — resume here
+
+The site returns **500 `FUNCTION_INVOCATION_FAILED`**. Runtime logs show `MongooseServerSelectionError` + `SSL alert number 80` — that TLS alert is Atlas's signature for a **non-allowlisted client IP**. The connection string itself is fine. Fix:
+
+1. Atlas → **Network Access** → Add IP Address → **Allow access from anywhere** (`0.0.0.0/0`) → Confirm
+   - Do NOT tick the "temporary entry" option (it auto-deletes after 6h and the site would die again)
+   - Wait for status "Pending" → "Active" (~1 min)
+2. Vercel → Deployments → latest → ⋯ → **Redeploy** (crashed instances don't retry the DB connection on their own)
+3. Verify https://vibin-out.vercel.app loads
+
+`MONGODB_URI` must use this exact shape (Atlas's copy button omits the DB name — it must be in the path or data goes to a DB named `test`; URL-encode special chars in the password):
+
+```
+mongodb+srv://feifeiw933_db_user:<url-encoded-password>@primary-cluster.fiobc3h.mongodb.net/playlistdb?retryWrites=true&w=majority&appName=primary-cluster
+```
+
+Note: Atlas **Service Accounts are the wrong tool** for app connections (they're for the Atlas Admin API / infrastructure automation). DB user + password in the URI is the correct auth method — the user was advised not to create one.
+
+### Remaining checklist
+
+- [ ] Add `0.0.0.0/0` to Atlas Network Access + redeploy (see blocker above)
+- [ ] Confirm Spotify API credentials are valid (`CLIENT_ID`/`CLIENT_SECRET` in Vercel)
+- [ ] Click through register → login → create playlist → view playlist on the live site
+- [ ] Update README with the live URL (https://vibin-out.vercel.app) once confirmed working
+
+### Planned follow-up: UI critique
+
+The user wants a UI critique using the **impeccable** skill (Anthropic's frontend-design skill, installed via `npx impeccable install` then `/impeccable init`). The install failed in the remote (web) sandbox — HTTP 403, the network policy blocks the skill download from GitHub — so run it in the local terminal session instead. Reference material: `documentation/*.png` holds the 2022 wireframes/screenshots; critique should compare those against fresh screenshots of the live site once it's up.
 
 ---
 
