@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Vibin' Out — Drydown Score wireframe</title>
+<style>
+  /* Intentionally rough: system fonts, thin gray lines, no color. A sketch, not a mockup. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, Helvetica, Arial, sans-serif; background: #fafafa; color: #222; padding: 24px; }
+  .screens { display: flex; gap: 28px; align-items: flex-start; }
+  .screen { background: #fff; border: 2px solid #999; border-radius: 6px; width: 460px; flex-shrink: 0; }
+  .browser-bar { border-bottom: 1px solid #ccc; padding: 8px 12px; font-size: 11px; color: #888; }
+  .pad { padding: 20px; }
+  .label { font-size: 10px; letter-spacing: 1px; color: #aaa; text-transform: uppercase; margin: 24px 0 6px; }
+  .screen-title { font-size: 12px; color: #666; margin-bottom: 10px; font-style: italic; }
+  h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+  .tagline { font-size: 13px; color: #555; margin-top: 4px; }
+  input[type=text], textarea { width: 100%; border: 1.5px solid #888; border-radius: 4px; padding: 10px; font-size: 14px; margin-top: 6px; background: #fff; font-family: inherit; }
+  .hint { font-size: 11px; color: #999; margin-top: 4px; }
+  .pills { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .pill { border: 1.5px solid #888; border-radius: 999px; padding: 6px 14px; font-size: 12px; background: #fff; }
+  .pill.on { background: #333; color: #fff; }
+  .cta { width: 100%; margin-top: 26px; padding: 14px; background: #222; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; }
+  .examples { margin-top: 18px; font-size: 12px; color: #777; }
+  .examples a { color: #444; }
+  /* score page */
+  .score-head h2 { font-size: 22px; font-weight: 800; }
+  .interp { font-size: 13px; font-style: italic; color: #555; margin-top: 4px; }
+  .meta { font-size: 11px; color: #999; margin-top: 6px; }
+  .arc { display: flex; height: 34px; margin: 16px 0 4px; border: 1.5px solid #888; border-radius: 4px; overflow: hidden; }
+  .arc div { display: flex; align-items: center; justify-content: center; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; border-right: 1.5px dashed #999; }
+  .arc div:last-child { border-right: none; }
+  .arc .top { width: 25%; background: #eee; }
+  .arc .heart { width: 45%; background: #ddd; }
+  .arc .base { width: 30%; background: #ccc; }
+  .arc-hint { font-size: 10px; color: #aaa; text-align: center; margin-bottom: 14px; }
+  .phase { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #888; margin: 16px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 3px;}
+  .track { display: flex; gap: 10px; border: 1.5px solid #aaa; border-radius: 4px; padding: 10px; margin-bottom: 8px; }
+  .cover { width: 44px; height: 44px; border: 1.5px dashed #999; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #999; flex-shrink: 0; }
+  .t-name { font-size: 13px; font-weight: 700; }
+  .t-artist { font-size: 12px; color: #666; }
+  .t-why { font-size: 11px; color: #888; font-style: italic; margin-top: 4px; }
+  .badge { display: inline-block; border: 1px solid #999; border-radius: 3px; font-size: 9px; padding: 1px 5px; color: #777; margin-left: 6px; vertical-align: 1px; }
+  .share { display: flex; gap: 8px; margin-top: 18px; }
+  .share input { flex: 1; font-size: 12px; color: #888; }
+  .btn2 { padding: 10px 14px; border: 1.5px solid #333; background: #fff; border-radius: 5px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .note { font-size: 10px; color: #bbb; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="screens">
+
+  <!-- SCREEN 1: the input card. One decision per row. No login anywhere. -->
+  <div class="screen">
+    <div class="browser-bar">vibinout.app</div>
+    <div class="pad">
+      <div class="screen-title">Screen 1 — Home / input (no login, nothing else on the page)</div>
+      <h1>Vibin' Out</h1>
+      <p class="tagline">Turn a scent into a soundtrack.</p>
+
+      <div class="label">What does it smell like?</div>
+      <textarea rows="2">bergamot, black tea, cedar — a quiet bookshop on a rainy day</textarea>
+      <p class="hint">Fragrance notes, a candle label, coffee-bag tasting notes — any scent language works.</p>
+
+      <div class="label">How long?</div>
+      <div class="pills">
+        <span class="pill">30 min</span>
+        <span class="pill on">60 min</span>
+        <span class="pill">90 min</span>
+      </div>
+
+      <div class="label">Discovery</div>
+      <div class="pills">
+        <span class="pill">Familiar</span>
+        <span class="pill on">Balanced</span>
+        <span class="pill">Deep cuts</span>
+      </div>
+
+      <button class="cta">Distill my playlist →</button>
+
+      <p class="examples">or try an example: <a href="#">Smoky oud</a> · <a href="#">Espresso beans</a> · <a href="#">Ocean soap</a></p>
+      <p class="note">Loading state after click: "distilling your scent…" (~10-15s: LLM + track verification)</p>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: the score page. This IS the product: shareable, structured, reasoned. -->
+  <div class="screen">
+    <div class="browser-bar">vibinout.app/score/rain-through-cedar</div>
+    <div class="pad">
+      <div class="screen-title">Screen 2 — The Drydown Score (shareable URL)</div>
+      <div class="score-head">
+        <h2>♫ Rain Through Cedar</h2>
+        <p class="interp">"Cool mineral air settling into dry wood."</p>
+        <p class="meta">from: bergamot, black tea, cedar · 60 min · balanced</p>
+      </div>
+
+      <div class="arc">
+        <div class="top">Top · bright</div>
+        <div class="heart">Heart · identity</div>
+        <div class="base">Base · linger</div>
+      </div>
+      <p class="arc-hint">the scent's evolution = the playlist's arc</p>
+
+      <div class="phase">Top notes — bergamot (3 tracks)</div>
+      <div class="track">
+        <div class="cover">embed</div>
+        <div>
+          <div class="t-name">Glassy Morning <span class="badge">indie find</span></div>
+          <div class="t-artist">Ana Roxanne</div>
+          <div class="t-why">"Glassy percussion carries the mineral sharpness of the opening."</div>
+        </div>
+      </div>
+      <div class="track">
+        <div class="cover">embed</div>
+        <div>
+          <div class="t-name">Tea Leaf Dancers</div>
+          <div class="t-artist">Flying Lotus, Andreya Triana</div>
+          <div class="t-why">"Steam rising — bright but already steeping into something darker."</div>
+        </div>
+      </div>
+
+      <div class="phase">Heart notes — black tea (5 tracks) … </div>
+      <div class="phase">Base notes — cedar (4 tracks) … </div>
+
+      <div class="share">
+        <input type="text" value="vibinout.app/score/rain-through-cedar">
+        <button class="btn2">Copy link</button>
+        <button class="btn2">↻ Remix</button>
+      </div>
+      <p class="note">Remix keeps the scent, regenerates the interpretation. Each track = Spotify embed (verified to exist before render).</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -183,3 +183,19 @@ The user wants a UI critique using the **impeccable** skill (Anthropic's fronten
 - The `package.json` lists many redundant transitive dependencies explicitly; this is fine but `npm install` may take longer than expected
 - Fuzzy search on Playlist/Song models (via `mongoose-fuzzy-searching`) creates extra index fields in MongoDB — expected behavior
 - Spotify client-credentials tokens expire after 1 hour — routes must fetch a fresh token per request (as `list.js` and `list-item.js` now do), never at module load
+
+---
+
+## Design Context
+
+*(Established 2026-07-27 via impeccable/teach-impeccable + gstack office-hours. Full spec in `.impeccable.md` — that file is the source of truth; this is the summary.)*
+
+- **Product direction (v2, "The Drydown Score"):** no-login scent→playlist generator. Design doc: `~/.gstack/projects/vibin-out/feief-main-design-20260727-133759.md`.
+- **Audience:** coffee shop/vintage store owners soundtracking their space; students soundtracking study sessions; strangers arriving on shared `/score/<slug>` URLs.
+- **Brand voice:** "an unusually perceptive record-store employee" — lowercase, literate, sensory tasting-note copy. Never hypey, never "AI-powered ✨".
+- **Aesthetic:** "liner notes from an apothecary" — warm editorial ink-on-paper. Paper `#F6F1E7`, ink `#211D17`. Phase accents citrine `#D9A441` → terracotta `#B8552F` → resin `#4A3B2A`; links vetiver `#3F5142`. Light theme.
+- **Type:** Fraunces (display/wordmark), Newsreader (prose), IBM Plex Mono 13px (track metadata + sensory justifications).
+- **Wordmark:** `vibin' out` — lowercase Fraunces, purely typographic, citrine apostrophe as the only color. Clean slate from the 2022 look.
+- **Signature interaction:** the drydown scroll (page accents shift citrine→terracotta→resin as you scroll top→heart→base notes); near-zero motion elsewhere; reduced-motion crossfade fallback.
+- **Standing bar:** WCAG AA; meaning never carried by color alone.
+- **Anti-references:** dark-neon AI aesthetics, glassmorphism, gradient text, Spotify-clone dark UI, card grids, and the 2022 design itself.
