@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ARTIST_INDIE_POPULARITY_THRESHOLD,
   createSpotifyResolver,
   INDIE_POPULARITY_THRESHOLD,
   isIndie,
   mapWithConcurrency,
+  MAX_TRACK_DURATION_MS,
 } from '../lib/trackResolver.js';
 
 const ok = (body) => ({
@@ -21,20 +23,23 @@ const tooManyRequests = (retryAfter = '1') => ({
   json: async () => ({}),
 });
 
-function trackHit({ id = 'id1', name, artists, popularity = 55, durationMs = 210_000 }) {
+function item({ id = 'id1', name, artists, popularity = 55, durationMs = 210_000 }) {
   return {
-    tracks: {
-      items: [
-        {
-          id,
-          name,
-          artists: artists.map((a) => ({ name: a })),
-          popularity,
-          duration_ms: durationMs,
-        },
-      ],
-    },
+    id,
+    name,
+    artists: artists.map((a) => ({ id: `art-${a}`, name: a })),
+    popularity,
+    duration_ms: durationMs,
   };
+}
+
+function trackHit(spec) {
+  return { tracks: { items: [item(spec)] } };
+}
+
+/** Several results for one query, in the order Spotify returned them. */
+function trackHits(specs) {
+  return { tracks: { items: specs.map(item) } };
 }
 
 /** A fetch double: token requests always succeed, searches come from a queue. */
@@ -95,6 +100,7 @@ test('resolve records the spotify id, popularity, duration and indie flag', asyn
     why: 'mineral',
     phaseIndex: 0,
     spotifyId: 'abc',
+    artistId: 'art-Ana Roxanne',
     popularity: 12,
     durationMs: 210_000,
     indie: true,
@@ -313,4 +319,122 @@ test('isIndie is grounded in popularity, never in what the model claims', () => 
   assert.equal(isIndie(INDIE_POPULARITY_THRESHOLD - 1), true);
   assert.equal(isIndie(INDIE_POPULARITY_THRESHOLD), false);
   assert.equal(isIndie(null), false);
+});
+
+/**
+ * Regression from the eval: Al Green's "At Last" (track pop 34) wore an
+ * "indie find" badge. A quiet track by a famous artist is a deep cut, not a
+ * discovery — the badge has to be true about the artist.
+ *
+ * Thresholds calibrated against the eval's own artists (real Spotify artist
+ * popularity, 2026-07-27).
+ */
+test('isIndie requires the ARTIST to be obscure, not just the track', () => {
+  // Al Green: track 34 (quiet) but artist 68 (famous) — must never badge.
+  assert.equal(isIndie(34, 68), false);
+  // Billie Holiday: track 29, artist 64.
+  assert.equal(isIndie(29, 64), false);
+  // Kelela: track 29, artist 65.
+  assert.equal(isIndie(29, 65), false);
+
+  // Raime: track 6, artist 18. Meg Baird: track 4, artist 17.
+  assert.equal(isIndie(6, 18), true);
+  assert.equal(isIndie(4, 17), true);
+  // Widowspeak sits just under the boundary and should still badge.
+  assert.equal(isIndie(2, 49), true);
+
+  // A popular track by an obscure artist is still not a "find".
+  assert.equal(isIndie(80, 10), false);
+  // Exactly at the artist threshold is not below it.
+  assert.equal(isIndie(10, ARTIST_INDIE_POPULARITY_THRESHOLD), false);
+  assert.equal(isIndie(10, ARTIST_INDIE_POPULARITY_THRESHOLD - 1), true);
+});
+
+test('enrichIndie re-decides the badge with one batched artist request', async () => {
+  const calls = { artists: 0, urls: [] };
+  const fetchImpl = async (url) => {
+    if (String(url).includes('accounts.spotify.com')) {
+      return ok({ access_token: 'tok', expires_in: 3600 });
+    }
+    calls.artists += 1;
+    calls.urls.push(String(url));
+    return ok({
+      artists: [
+        { id: 'art-Al Green', popularity: 68 },
+        { id: 'art-Raime', popularity: 18 },
+      ],
+    });
+  };
+  const resolver = createSpotifyResolver(deps(fetchImpl));
+
+  const tracks = [
+    { title: 'At Last', artist: 'Al Green', artistId: 'art-Al Green', popularity: 34, indie: true },
+    { title: 'This Foundry', artist: 'Raime', artistId: 'art-Raime', popularity: 6, indie: true },
+  ];
+  const { enriched } = await resolver.enrichIndie(tracks);
+
+  assert.equal(enriched, true);
+  assert.equal(calls.artists, 1, 'one batched request for the whole score');
+  assert.match(calls.urls[0], /\/v1\/artists\?ids=art-Al%20Green,art-Raime|\/v1\/artists\?ids=art-Al Green,art-Raime/);
+  assert.equal(tracks[0].indie, false, 'Al Green is a deep cut, not an indie find');
+  assert.equal(tracks[0].artistPopularity, 68);
+  assert.equal(tracks[1].indie, true, 'Raime still badges');
+});
+
+test('enrichIndie degrades to the track-only rule when the lookup fails', async () => {
+  const fetchImpl = async (url) => {
+    if (String(url).includes('accounts.spotify.com')) {
+      return ok({ access_token: 'tok', expires_in: 3600 });
+    }
+    return { ok: false, status: 503, headers: { get: () => null }, json: async () => ({}) };
+  };
+  const resolver = createSpotifyResolver(deps(fetchImpl));
+
+  const tracks = [
+    { title: 'At Last', artist: 'Al Green', artistId: 'art-Al Green', popularity: 34, indie: true },
+  ];
+  const { enriched } = await resolver.enrichIndie(tracks);
+
+  assert.equal(enriched, false);
+  assert.equal(tracks[0].indie, true, 'the pre-existing verdict survives rather than erroring');
+});
+
+/**
+ * Regression from the eval: a single 63.6-minute William Basinski piece took
+ * a 90-minute score to 140.5 minutes.
+ */
+test('an over-long track is a miss, so the phase gets backfilled around it', async () => {
+  const { fetchImpl } = makeFetch([
+    ok(trackHit({ name: 'dlp 1.1', artists: ['William Basinski'], durationMs: 63.6 * 60_000 })),
+  ]);
+  const resolver = createSpotifyResolver(deps(fetchImpl));
+
+  const { tracks, misses } = await resolver.resolve([
+    { title: 'dlp 1.1', artist: 'William Basinski' },
+  ]);
+
+  assert.equal(tracks.length, 0);
+  assert.equal(misses.length, 1);
+  assert.equal(misses[0].reason, 'too_long');
+  assert.ok(MAX_TRACK_DURATION_MS === 15 * 60 * 1000, 'the cap is a named constant');
+});
+
+test('a shorter edit further down the results is preferred over an over-long one', async () => {
+  const { fetchImpl } = makeFetch([
+    ok(
+      trackHits([
+        { id: 'long', name: 'Avril 14th', artists: ['Aphex Twin'], durationMs: 20 * 60_000 },
+        { id: 'short', name: 'Avril 14th', artists: ['Aphex Twin'], durationMs: 2 * 60_000 },
+      ]),
+    ),
+  ]);
+  const resolver = createSpotifyResolver(deps(fetchImpl));
+
+  const { tracks, misses } = await resolver.resolve([
+    { title: 'Avril 14th', artist: 'Aphex Twin' },
+  ]);
+
+  assert.equal(misses.length, 0);
+  assert.equal(tracks[0].spotifyId, 'short', 'scanning continues past the over-long hit');
+  assert.equal(tracks[0].durationMs, 2 * 60_000);
 });

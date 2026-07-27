@@ -31,7 +31,7 @@ import { generateScore, runtimeBounds } from '../lib/generateScore.js';
 import { normalizeName, splitArtists } from '../lib/matchVerification.js';
 import { saveScore } from '../lib/scoreStore.js';
 import { PHASE_ORDER, quotaFor, totalQuota } from '../lib/schema.js';
-import { mapWithConcurrency } from '../lib/trackResolver.js';
+import { mapWithConcurrency, MAX_TRACK_DURATION_MS } from '../lib/trackResolver.js';
 import { disconnect } from '../db.js';
 
 const OUT_DIR =
@@ -105,8 +105,24 @@ async function runChecks(fixture, result) {
     quota: quota[p.name],
   }));
 
-  // (5) indie finds
-  const indieCount = allTracks.filter((t) => t.indie).length;
+  // (5) indie finds — listed with artist popularity so a mislabelled famous
+  // artist is visible rather than buried in a count.
+  const indieTracks = allTracks.filter((t) => t.indie);
+  const indieCount = indieTracks.length;
+
+  // (7) duplicate song titles, including covers by a different artist
+  const seenTitles = new Map();
+  const duplicateTitles = [];
+  for (const track of allTracks) {
+    const key = normalizeName(track.title);
+    if (seenTitles.has(key)) duplicateTitles.push({ title: track.title, artists: [seenTitles.get(key), track.artist] });
+    else seenTitles.set(key, track.artist);
+  }
+
+  // (8) single-track length cap
+  const overLong = allTracks
+    .filter((t) => t.durationMs > MAX_TRACK_DURATION_MS)
+    .map((t) => ({ title: t.title, artist: t.artist, minutes: minutes(t.durationMs) }));
 
   // (6) structure
   const order = result.phases.map((p) => p.name);
@@ -134,7 +150,20 @@ async function runChecks(fixture, result) {
       quota: totalQuota(fixture.duration),
       perPhase: perPhaseCounts,
     },
-    indie: { count: indieCount, of: allTracks.length, discovery: fixture.discovery },
+    duplicateTitles: { pass: duplicateTitles.length === 0, offenders: duplicateTitles },
+    overLongTracks: { pass: overLong.length === 0, offenders: overLong, capMinutes: minutes(MAX_TRACK_DURATION_MS) },
+    indie: {
+      count: indieCount,
+      of: allTracks.length,
+      discovery: fixture.discovery,
+      grounded: Boolean(result.indieGrounded),
+      badged: indieTracks.map((t) => ({
+        artist: t.artist,
+        title: t.title,
+        trackPopularity: t.popularity,
+        artistPopularity: t.artistPopularity ?? null,
+      })),
+    },
     structure: { pass: orderOk && weightsOk, order, weightSum: Math.round(weightSum * 1000) / 1000 },
     budget: {
       pass: result.modelCalls <= 3,
@@ -149,6 +178,8 @@ function mechanicalVerdict(checks) {
   // accept-and-note otherwise, so a short-but-honest score is not a failure.
   const gates = [
     checks.duplicateArtists.pass,
+    checks.duplicateTitles.pass,
+    checks.overLongTracks.pass,
     checks.deadEmbeds.pass,
     checks.structure.pass,
     checks.budget.pass,
@@ -242,8 +273,11 @@ function fixtureMarkdown(entry) {
       `- **Wall time:** ${(entry.timing.generateMs / 1000).toFixed(1)}s\n`;
   }
 
-  const c = entry.checks;
-  const mark = (pass) => (pass ? 'PASS' : 'FAIL');
+  // Entries merged from an earlier run predate later checks; render them as
+  // "not measured" rather than crashing the whole report.
+  const missing = { pass: null, offenders: [], badged: [] };
+  const c = { duplicateTitles: missing, overLongTracks: missing, ...entry.checks };
+  const mark = (pass) => (pass === null ? 'n/a' : pass ? 'PASS' : 'FAIL');
 
   const lines = [
     head,
@@ -271,7 +305,25 @@ function fixtureMarkdown(entry) {
     `| Track count vs quota | ${c.trackCount.pass ? 'met' : 'under'} | ${c.trackCount.got}/${
       c.trackCount.quota
     } (${c.trackCount.perPhase.map((p) => `${p.name} ${p.got}/${p.quota}`).join(', ')}) |`,
-    `| Indie finds | — | ${c.indie.count}/${c.indie.of} tracks (discovery: ${c.indie.discovery}) |`,
+    `| Duplicate titles | ${mark(c.duplicateTitles.pass)} | ${
+      c.duplicateTitles.offenders.length
+        ? c.duplicateTitles.offenders.map((o) => `"${o.title}" (${o.artists.join(' / ')})`).join('; ')
+        : 'none'
+    } |`,
+    `| Over-long tracks | ${mark(c.overLongTracks.pass)} | ${
+      c.overLongTracks.offenders.length
+        ? c.overLongTracks.offenders.map((o) => `${o.title} — ${o.artist} (${o.minutes}min)`).join('; ')
+        : `none over ${c.overLongTracks.capMinutes ?? '?'}min`
+    } |`,
+    `| Indie finds | — | ${c.indie.count}/${c.indie.of} tracks (discovery: ${c.indie.discovery}, artist-grounded: ${
+      c.indie.grounded ?? false
+    })${
+      (c.indie.badged ?? []).length
+        ? `<br>${c.indie.badged
+            .map((b) => `${b.artist} — track ${b.trackPopularity}, artist ${b.artistPopularity ?? '?'}`)
+            .join('<br>')}`
+        : ''
+    } |`,
     `| Phase order + weights | ${mark(c.structure.pass)} | ${c.structure.order.join(' → ')}, weights sum ${
       c.structure.weightSum
     } |`,

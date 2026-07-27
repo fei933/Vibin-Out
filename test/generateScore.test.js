@@ -8,7 +8,7 @@ import {
   MODEL_CALL_TIMEOUT_MS,
   RESOLVE_RESERVE_MS,
 } from '../lib/generateScore.js';
-import { buildBackfillPrompt } from '../lib/prompt.js';
+import { buildBackfillPrompt, buildSystemPrompt } from '../lib/prompt.js';
 import { ERROR_CODES } from '../lib/errors.js';
 import { quotaFor } from '../lib/schema.js';
 
@@ -287,7 +287,7 @@ test('the budget fits inside the deployed function ceiling', () => {
 });
 
 test('dedupeAcrossScore drops repeated artists and ids, earliest phase wins', () => {
-  const deduped = dedupeAcrossScore([
+  const { phases: deduped, dropped } = dedupeAcrossScore([
     {
       name: 'top',
       tracks: [
@@ -314,6 +314,89 @@ test('dedupeAcrossScore drops repeated artists and ids, earliest phase wins', ()
   );
 });
 
+/**
+ * Regression from the eval: fixture 1 played "Skinny Love" twice in a row —
+ * Bon Iver's, then Birdy's cover — and fixture 5 paired two "At Last"s. The
+ * artist rule cannot see a cover, because the artists genuinely differ.
+ */
+test('dedupeAcrossScore drops a repeated title even by a different artist', () => {
+  const { phases, dropped } = dedupeAcrossScore([
+    {
+      name: 'top',
+      tracks: [{ title: 'Skinny Love', artist: 'Bon Iver', spotifyId: '1' }],
+    },
+    {
+      name: 'heart',
+      tracks: [
+        { title: 'Skinny Love', artist: 'Birdy', spotifyId: '2' },
+        { title: 'At Last', artist: 'Etta James', spotifyId: '3' },
+      ],
+    },
+    {
+      name: 'base',
+      tracks: [
+        // Same title wearing a qualifier — normalisation has to see through it.
+        { title: 'At Last (2011 Remaster)', artist: 'Al Green', spotifyId: '4' },
+        { title: 'Survivor', artist: 'Nobody Else', spotifyId: '5' },
+      ],
+    },
+  ]);
+
+  assert.deepEqual(
+    phases.map((p) => p.tracks.map((t) => `${t.title} — ${t.artist}`)),
+    [['Skinny Love — Bon Iver'], ['At Last — Etta James'], ['Survivor — Nobody Else']],
+  );
+  assert.deepEqual(
+    dropped.map((t) => `${t.artist}:${t.reason}`),
+    ['Birdy:duplicate_title', 'Al Green:duplicate_title'],
+  );
+});
+
+test('a title dropped as a duplicate is backfilled around and excluded by title', async () => {
+  const prompts = [];
+  let calls = 0;
+
+  // The model hands back the same title twice, by two different artists.
+  const coverScore = () => ({
+    refused: false,
+    title: 'Doubled',
+    interpretation: 'A scent that repeats itself.',
+    phases: [
+      { ...phase('top', 3, 0.25) },
+      {
+        ...phase('heart', 5, 0.45),
+        tracks: [
+          { title: 'Skinny Love', artist: 'Bon Iver', why: 'w' },
+          { title: 'Skinny Love', artist: 'Birdy', why: 'w' },
+          ...phase('heart', 3, 0.45).tracks,
+        ],
+      },
+      { ...phase('base', 4, 0.3) },
+    ],
+  });
+
+  const result = await generateScore(REQUEST, {
+    callModel: async ({ prompt }) => {
+      calls += 1;
+      prompts.push(prompt);
+      if (calls === 1) return coverScore();
+      return {
+        phases: [{ name: 'heart', tracks: [{ title: 'Re: Stacks', artist: 'Fresh Name', why: 'w' }] }],
+      };
+    },
+    resolver: fakeResolver(),
+  });
+
+  const titles = result.phases.flatMap((p) => p.tracks.map((t) => t.title));
+  assert.equal(new Set(titles).size, titles.length, 'no title appears twice in the score');
+  assert.equal(titles.filter((t) => t === 'Skinny Love').length, 1);
+
+  assert.equal(calls, 2, 'the dropped duplicate leaves a hole that gets backfilled');
+  assert.match(prompts[1], /DO NOT USE THESE SONG TITLES/);
+  assert.match(prompts[1], /Skinny Love/);
+  assert.match(prompts[1], /Birdy/, 'the cover artist is excluded too');
+});
+
 test('buildBackfillPrompt lists every exclusion and the exact shortfall', () => {
   const prompt = buildBackfillPrompt({
     input: 'smoky oud',
@@ -322,14 +405,24 @@ test('buildBackfillPrompt lists every exclusion and the exact shortfall', () => 
     interpretation: 'Charred wood in a cold room.',
     shortfalls: [{ name: 'base', scentNotes: 'oud, ash', needed: 2 }],
     excludedArtists: ['Ana Roxanne', 'Burial'],
+    excludedTitles: ['Skinny Love', 'At Last'],
     excludedTracks: [{ title: 'Ghost Track', artist: 'Nobody' }],
   });
 
   assert.match(prompt, /base phase \(oud, ash\): 2 more tracks/);
   assert.match(prompt, /Ana Roxanne; Burial/);
   assert.match(prompt, /Ghost Track — Nobody/);
+  assert.match(prompt, /Skinny Love; At Last/);
+  assert.match(prompt, /in any version, by any artist, including covers/);
   assert.match(prompt, /DEEP CUTS/);
   assert.ok(!prompt.includes('smoky oud\nRUNTIME'), 'the raw input stays inside its fence');
+});
+
+test('the system prompt forbids repeated titles and long-form pieces', () => {
+  const system = buildSystemPrompt();
+  assert.match(system, /same SONG TITLE twice/);
+  assert.match(system, /covers and\s+re-recordings/);
+  assert.match(system, /Never propose anything longer than 15 minutes/);
 });
 
 test('a score where nothing resolves is a failed generation, not an empty page', async () => {
