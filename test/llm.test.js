@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MockLanguageModelV3 } from 'ai/test';
-import { ANTHROPIC_MODEL, callModel, GATEWAY_MODEL, selectProvider } from '../lib/llm.js';
+import { ANTHROPIC_MODEL, callModel, GATEWAY_MODEL, selectModel, selectProvider } from '../lib/llm.js';
 import { llmScoreSchema } from '../lib/schema.js';
 import { buildScorePrompt, buildSystemPrompt } from '../lib/prompt.js';
 
@@ -12,6 +12,19 @@ test('provider selection prefers the gateway, falls back to Anthropic, else refu
   assert.equal(selectProvider({}), null);
   assert.equal(GATEWAY_MODEL, 'anthropic/claude-sonnet-5');
   assert.equal(ANTHROPIC_MODEL, 'claude-sonnet-5');
+});
+
+/**
+ * The provider packages version independently of `ai`, and a mismatched pair
+ * fails only at the first real call. @ai-sdk/anthropic v2 speaks the v2
+ * language-model spec and ai@6 speaks v3 — installing the "obvious" ^2.0.0
+ * produced exactly that silent break. Pin the invariant instead.
+ */
+test('both providers speak the language-model spec this ai version expects', () => {
+  const expected = new MockLanguageModelV3({}).specificationVersion;
+  assert.equal(selectModel({ ANTHROPIC_API_KEY: 'x' }).specificationVersion, expected);
+  assert.equal(selectModel({ AI_GATEWAY_API_KEY: 'x' }).specificationVersion, expected);
+  assert.throws(() => selectModel({}), /no LLM provider configured/);
 });
 
 function mockModel(text) {
