@@ -1,71 +1,56 @@
+/**
+ * Vibin' Out v2 — the Drydown Score.
+ *
+ * Three routes, no auth, no sessions. Nothing here connects to Mongo or
+ * Spotify at import time: on Vercel this module is evaluated on every cold
+ * start, and the home page must render even when every dependency is down.
+ */
+import 'dotenv/config';
+import express from 'express';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-require('dotenv').config();
-require('./db');
-require('./auth');
+import home from './routes/index.js';
+import score from './routes/score.js';
 
-
-const passport = require('passport');
-const express = require('express');
-const path = require('path');
-
-const routes = require('./routes/index');
-const list = require('./routes/list');
-const listItem = require('./routes/list-item');
-const productview = require('./routes/product-view');
-const profile = require('./routes/profile');
-const flash = require('connect-flash');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
-// view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
 
-// running behind a reverse proxy on Vercel/Render — required for correct
-// client IPs and secure cookies
+// Behind Vercel's proxy — required for correct client IPs in the rate limiter.
 app.set('trust proxy', 1);
 
-// enable sessions — backed by MongoDB so they survive serverless instance
-// recycling (in-memory sessions are lost between invocations on Vercel)
-const session = require('express-session');
-const MongoStore = require('connect-mongo');
-const sessionOptions = {
-    secret: process.env.SESSION_SECRET || 'insecure-dev-secret',
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI })
-};
-app.use(session(sessionOptions));
+app.use(express.json({ limit: '16kb' }));
+app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
 
-app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use('/', home);
+app.use('/', score);
 
-// passport setup
-app.use(passport.initialize());
-app.use(passport.session());
-// app.use(flash());
-
-
-
-// make user data available to all templates
-app.use((req, res, next) => {
-  res.locals.user = req.user;
-  next();
+app.use((req, res) => {
+  res.status(404).render('error', {
+    title: 'nothing here',
+    message: 'That page has no scent behind it.',
+  });
 });
 
-app.use('/', routes);
-app.use('/list', list);
-app.use('/product-view',productview);
-app.use('/list-item', listItem);
-app.use('/profile', profile);
+// eslint-disable-next-line no-unused-vars -- Express identifies error handlers by arity
+app.use((error, req, res, next) => {
+  console.error('[unhandled]', error?.stack || error);
+  res.status(500).render('error', {
+    title: 'something went wrong',
+    message: 'The still misfired. Try again in a moment.',
+  });
+});
 
-
-
-// on Vercel the app is imported by api/index.js and run as a serverless
-// function; only bind a port when run directly (local dev, Render, etc.)
-if (require.main === module) {
-    const port = process.env.PORT || 3000;
-    app.listen(port);
+// On Vercel the app is imported by api/index.js and served as a function;
+// only bind a port when this file is run directly.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => console.log(`vibin' out listening on http://localhost:${port}`));
 }
 
-module.exports = app;
+export default app;

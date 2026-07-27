@@ -1,0 +1,51 @@
+<h1><span class="wordmark">vibin&rsquo; out</span></h1>
+<p class="tagline">Turn a scent into a soundtrack.</p>
+
+<form id="score-form" method="post" action="/api/score">
+  <p>
+    <label for="scent">What does it smell like?</label>
+    <textarea
+      id="scent"
+      name="input"
+      rows="3"
+      maxlength="{{maxLength}}"
+      required
+      placeholder="bergamot, black tea, cedar &mdash; a quiet bookshop on a rainy day"
+    ></textarea>
+    <span class="hint">Fragrance notes, a candle label, coffee-bag tasting notes &mdash; any scent language works.</span>
+  </p>
+
+  <fieldset>
+    <legend>How long?</legend>
+    {{#each durations}}
+      <label>
+        <input type="radio" name="duration" value="{{value}}" {{#if checked}}checked{{/if}} />
+        {{label}}
+      </label>
+    {{/each}}
+  </fieldset>
+
+  <fieldset>
+    <legend>Discovery</legend>
+    {{#each discoveries}}
+      <label>
+        <input type="radio" name="discovery" value="{{value}}" {{#if checked}}checked{{/if}} />
+        {{label}}
+      </label>
+    {{/each}}
+  </fieldset>
+
+  <p>
+    <button type="submit" id="submit">Distill my playlist</button>
+  </p>
+</form>
+
+<p id="examples">
+  or try an example:
+  {{#each examples}}
+    <button type="button" class="example" data-scent="{{value}}">{{label}}</button>
+  {{/each}}
+</p>
+
+<p id="loading" hidden aria-live="polite">distilling your scent&hellip;</p>
+<p id="error" hidden role="alert"></p>

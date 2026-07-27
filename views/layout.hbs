@@ -1,0 +1,30 @@
+{{!--
+  Structural only. There is deliberately no styling here: the visual design
+  pass (apothecary-paper direction, see .impeccable.md) replaces the look
+  without needing to change this markup's shape.
+--}}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{#if pageTitle}}{{pageTitle}} — vibin' out{{else}}vibin' out{{/if}}</title>
+    <meta name="description" content="Turn a scent into a soundtrack." />
+  </head>
+  <body>
+    <header>
+      <a href="/"><span class="wordmark">vibin&rsquo; out</span></a>
+    </header>
+
+    <main>
+      {{{body}}}
+    </main>
+
+    <footer>
+      <p>Top notes open the room. Heart notes give it feeling. Base notes decide what stays.</p>
+    </footer>
+
+    {{#if isHome}}<script src="/js/home.js" defer></script>{{/if}}
+    {{#if isScore}}<script src="/js/score.js" defer></script>{{/if}}
+  </body>
+</html>
