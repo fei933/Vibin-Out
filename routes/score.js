@@ -79,7 +79,7 @@ router.get('/score/:slug', async (req, res) => {
   if (!score) {
     return res.status(404).render('error', {
       title: 'no such score',
-      message: 'That link has no scent behind it. Distil a new one.',
+      message: 'That link has no scent behind it. Distill a new one.',
     });
   }
 

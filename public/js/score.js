@@ -54,7 +54,7 @@
           say(
             body && body.error === 'cooldown'
               ? 'The still is cooling down. Try again a little later.'
-              : 'That remix didn’t distil. Try again in a moment.',
+              : 'That remix didn’t distill. Try again in a moment.',
           );
         })
         .catch(function () {

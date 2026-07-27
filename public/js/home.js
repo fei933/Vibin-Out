@@ -12,10 +12,10 @@
 
   var MESSAGES = {
     cooldown:
-      'The still is cooling down — we can only distil so many scents an hour. Try again a little later.',
+      'The still is cooling down — we can only distill so many scents an hour. Try again a little later.',
     refused: 'This one’s not for us. Try describing a smell.',
     generation_failed:
-      'That didn’t distil. Your description is still here — give it another go.',
+      'That didn’t distill. Your description is still here — give it another go.',
     invalid_input: 'Give us a scent to work with — a few notes is plenty.',
     offline: 'No connection to the still. Check your network and try again.',
   };
