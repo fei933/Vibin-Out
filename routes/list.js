@@ -17,21 +17,6 @@ const express = require('express'),
 	Song = mongoose.model('Song'),
 	mongoose_fuzzy_searching = require('mongoose-fuzzy-searching'); // fuzzy search
 
-// Get access token from Spotify, credential grant authorization method, no need to sign in
-// the code snippet is revised from https://github.com/thelinmichael/spotify-web-api-node/blob/master/examples/client-credentials.js#L1
-spotifyApi.clientCredentialsGrant().
-then(function(data) {
-	spotifyApi.setAccessToken(data.body['access_token']);
-	return data.body['access_token'];
-  })
-.then(function(data) {
-	console.log(data);
-  })
-.catch(function(err) {
-	if(err){console.log('Something went wrong:', err.message);}
-});
-
-
 router.get('/', (req, res) => {
 	// Playlist.find({user: req.user ? req.user._id : undefined}, (err, lists, count) => {
 	// 	res.render('list-all.hbs', {lists:lists});
@@ -90,7 +75,13 @@ router.post('/create', (req, res) => {
 		let songToAdd = [];
 		let artists, track;
 		const props = getProps(p.scent,artists,track);
-		spotifyApi.getRecommendations(props)
+		// fetch a fresh token per request — client-credential tokens expire
+		// after 1 hour, and serverless instances can outlive a module-load token
+		spotifyApi.clientCredentialsGrant()
+		.then(function(data) {
+			spotifyApi.setAccessToken(data.body['access_token']);
+			return spotifyApi.getRecommendations(props);
+		})
 		.then(function(data) {
 			const recommendations = data.body;
 			// console.log(recommendations);
@@ -130,8 +121,9 @@ router.post('/create', (req, res) => {
 				res.redirect(`/list/${list.slug}`);
 				// res.redirect('/');
 			});
-		}, function(err) {
-		console.log("Something went wrong!", err);
+		})
+		.catch(function(err) {
+			console.log("Something went wrong!", err);
 		});
 	}else{
 		new Playlist({
