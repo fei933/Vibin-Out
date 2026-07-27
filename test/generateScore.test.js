@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dedupeAcrossScore, generateScore, MAX_MODEL_CALLS } from '../lib/generateScore.js';
+import {
+  dedupeAcrossScore,
+  DEFAULT_BUDGET_MS,
+  generateScore,
+  MAX_MODEL_CALLS,
+  MODEL_CALL_TIMEOUT_MS,
+  RESOLVE_RESERVE_MS,
+} from '../lib/generateScore.js';
 import { buildBackfillPrompt } from '../lib/prompt.js';
 import { ERROR_CODES } from '../lib/errors.js';
 import { quotaFor } from '../lib/schema.js';
@@ -202,7 +209,7 @@ test('provider rate limiting yields a partial score, not an error', async () => 
   const result = await generateScore(REQUEST, {
     callModel: async () => modelScore(),
     resolver: fakeResolver({ partial: true }),
-    backfillCutoffMs: 0, // no time for a backfill
+    backfillReserveMs: Infinity, // never enough budget left to backfill
   });
   assert.equal(result.partial, true);
 });
@@ -215,10 +222,68 @@ test('backfill is skipped when the time budget is already spent', async () => {
       return modelScore();
     },
     resolver: fakeResolver({ failing: new Set(['base 0']) }),
-    backfillCutoffMs: 0,
+    backfillReserveMs: Infinity,
   });
   assert.equal(calls, 1, 'no backfill once the budget is gone');
   assert.equal(result.short, true);
+});
+
+/**
+ * Regression from the ten-fixture eval: the per-call timeout was derived
+ * purely as `remaining budget - reserve`, so a primary call that consumed the
+ * budget left the retry a few seconds — guaranteed to time out as well. A
+ * single slow call therefore burned both attempts and failed the generation.
+ * Eight of the ten fixtures died exactly this way.
+ */
+test('a slow primary call does not starve its own retry of time', async () => {
+  const timeouts = [];
+  let clock = 0;
+  let calls = 0;
+
+  const result = await generateScore(REQUEST, {
+    now: () => clock,
+    callModel: async ({ timeoutMs }) => {
+      timeouts.push(timeoutMs);
+      calls += 1;
+      clock += 85_000; // a long, near-ceiling generation
+      if (calls === 1) throw new Error('The operation was aborted due to timeout');
+      return modelScore();
+    },
+    resolver: fakeResolver(),
+  });
+
+  assert.equal(calls, 2);
+  assert.ok(
+    timeouts[1] >= 60_000,
+    `the retry must get a usable timeout, got ${timeouts[1]}ms`,
+  );
+  assert.equal(result.trackCount, 12, 'and the retry actually succeeds');
+});
+
+test('no model call is ever given an unbounded or near-zero timeout', async () => {
+  const timeouts = [];
+  let clock = 0;
+  await generateScore(REQUEST, {
+    now: () => clock,
+    callModel: async ({ timeoutMs }) => {
+      timeouts.push(timeoutMs);
+      clock += 200_000; // blow through nearly the whole budget
+      return modelScore();
+    },
+    resolver: fakeResolver({ failing: new Set(['base 0']) }),
+  });
+
+  for (const timeout of timeouts) {
+    assert.ok(timeout >= 10_000, `timeout floor violated: ${timeout}ms`);
+    assert.ok(timeout <= MODEL_CALL_TIMEOUT_MS, `timeout ceiling violated: ${timeout}ms`);
+  }
+});
+
+test('the budget fits inside the deployed function ceiling', () => {
+  // vercel.json pins maxDuration to 300s (Hobby maximum); the pipeline budget
+  // plus its own reserves must leave the platform room to respond.
+  assert.ok(DEFAULT_BUDGET_MS <= 240_000, 'budget must stay well inside maxDuration');
+  assert.ok(MODEL_CALL_TIMEOUT_MS * 2 + RESOLVE_RESERVE_MS <= DEFAULT_BUDGET_MS);
 });
 
 test('dedupeAcrossScore drops repeated artists and ids, earliest phase wins', () => {
@@ -277,7 +342,7 @@ test('a score where nothing resolves is a failed generation, not an empty page',
     generateScore(REQUEST, {
       callModel: async () => modelScore(),
       resolver: everythingFails,
-      backfillCutoffMs: 0,
+      backfillReserveMs: Infinity,
     }),
     (error) => error.code === ERROR_CODES.GENERATION_FAILED,
   );

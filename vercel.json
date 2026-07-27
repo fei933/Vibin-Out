@@ -3,7 +3,7 @@
   "functions": {
     "api/index.js": {
       "includeFiles": "views/**",
-      "maxDuration": 60
+      "maxDuration": 300
     }
   }
 }
