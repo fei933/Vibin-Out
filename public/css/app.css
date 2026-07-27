@@ -551,25 +551,46 @@ a:hover {
   max-width: 52ch;
 }
 
+/* A generation runs from ~18s to ~2min, so this block is read, not glanced at.
+   It does not pulse: an honest sentence about the wait is a better companion
+   for two minutes than a breathing paragraph, and the rotating status line
+   below is sign enough that something is still happening. */
 #loading:not([hidden]) {
-  color: var(--ink-muted);
+  color: var(--ink-muted); /* 5.4:1 */
   border-left-color: var(--citrine);
-  animation: breathe 2.4s ease-in-out infinite;
+}
+
+.loading-anchor {
+  color: var(--ink-soft); /* 10.0:1 — the one line that never changes */
+  font-weight: 500;
+}
+
+/* How long this will take, set from the pills before the request goes out. */
+.loading-wait {
+  margin-top: 6px;
+}
+
+/* The only moving part on this page: the current stage, crossfaded. No bar and
+   no percentage — the server reports no progress, so neither do we. Lines are
+   kept under ~34 characters so a swap never reflows the block on a phone. */
+.loading-step {
+  margin-top: 14px;
+  transition: opacity 220ms var(--ease);
+}
+
+.loading-step.is-fading {
+  opacity: 0;
+}
+
+/* Before the script fills them, they must not leave gaps behind. */
+.loading-wait:empty,
+.loading-step:empty {
+  display: none;
 }
 
 #error:not([hidden]) {
   color: var(--terracotta-text);
   border-left-color: var(--terracotta);
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
 }
 
 /* =========================================================================
@@ -1077,4 +1098,11 @@ a:hover {
   /* Nothing in the arc moves in either mode — the reading marker is a static
      tick and the accent is a colour crossfade, which is what carries meaning
      and therefore survives. */
+
+  /* The loading status line swaps instantly. The words are the information;
+     the fade was only ever manners. (home.js skips the fade timer too, so the
+     swap really is instant rather than merely invisible.) */
+  .loading-step {
+    transition: none;
+  }
 }

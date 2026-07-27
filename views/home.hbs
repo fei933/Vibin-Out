@@ -58,5 +58,16 @@
   {{#each examples}}<button type="button" class="example" data-scent="{{value}}">{{label}}</button>{{#unless @last}}<span class="sep" aria-hidden="true">&middot;</span>{{/unless}}{{/each}}
 </p>
 
-<p id="loading" hidden aria-live="polite">distilling your scent&hellip;</p>
+{{!--
+  The wait is real — up to two minutes for a 90-minute or deep-cuts score — so
+  the state says so instead of pretending. Line one is the anchor, line two is
+  written from the pills before the request leaves, line three crossfades
+  through what is actually happening. Both are filled by public/js/home.js,
+  which is where this page's copy already lives.
+--}}
+<div id="loading" hidden aria-live="polite">
+  <p class="loading-anchor">distilling your scent&hellip;</p>
+  <p class="loading-wait"></p>
+  <p class="loading-step"></p>
+</div>
 <p id="error" hidden role="alert"></p>
