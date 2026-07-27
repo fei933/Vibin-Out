@@ -28,6 +28,7 @@
     "color-convert": "^2.0.1",
     "color-name": "^1.1.4",
     "concat-map": "^0.0.1",
+    "connect-mongo": "^4.6.0",
     "content-disposition": "^0.5.4",
     "content-type": "^1.0.4",
     "cookie": "^0.4.2",
@@ -186,16 +187,20 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon app.js"
+    "start": "node app.js",
+    "dev": "npx nodemon app.js"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nyu-csci-ua-0467-001-002-spring-2022/final-project-fei933.git"
+    "url": "git+https://github.com/fei933/Vibin-Out.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/nyu-csci-ua-0467-001-002-spring-2022/final-project-fei933/issues"
+    "url": "https://github.com/fei933/Vibin-Out/issues"
   },
-  "homepage": "https://github.com/nyu-csci-ua-0467-001-002-spring-2022/final-project-fei933#readme"
+  "homepage": "https://github.com/fei933/Vibin-Out#readme"
 }
