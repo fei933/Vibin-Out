@@ -142,13 +142,6 @@
     if (!busy) endWait();
   }
 
-  Array.prototype.forEach.call(document.querySelectorAll('.example'), function (button) {
-    button.addEventListener('click', function () {
-      textarea.value = button.getAttribute('data-scent');
-      textarea.focus();
-    });
-  });
-
   form.addEventListener('submit', function (event) {
     event.preventDefault();
     errorBox.hidden = true;
