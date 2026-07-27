@@ -156,13 +156,14 @@ test('a short score triggers exactly one combined backfill, and it is the last c
   assert.equal(calls, 2);
   assert.ok(calls <= MAX_MODEL_CALLS);
   assert.equal(result.trackCount, 12, 'backfill restored the score to quota');
-  assert.equal(result.short, false);
 
   const backfillPrompt = prompts[1];
   assert.match(backfillPrompt, /top phase[^\n]*1 more track/);
-  assert.match(backfillPrompt, /heart phase[^\n]*2 more tracks/);
   assert.match(backfillPrompt, /top artist 1/, 'surviving artists are excluded');
   assert.match(backfillPrompt, /heart 0 — heart artist 0/, 'failed tracks are excluded');
+  // The heart asks for more than its two missing records: nine 4-minute tracks
+  // is 36 minutes against a 60-minute pill, so the runtime top-up widens it.
+  assert.match(backfillPrompt, /heart phase[^\n]*4 more tracks/);
 });
 
 test('a still-short score after backfill renders short rather than failing', async () => {

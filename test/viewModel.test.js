@@ -56,6 +56,22 @@ test('toScoreViewModel precomputes everything a template cannot compute itself',
   assert.equal(view.short, true);
 });
 
+test('the view model says WHY a score is short, so the page can be truthful', () => {
+  const clockShort = toScoreViewModel({
+    ...doc,
+    result: { ...doc.result, short: true, runtimeShort: true, partial: false },
+  });
+  assert.equal(clockShort.short, true);
+  assert.equal(clockShort.runtimeShort, true, 'records were found, they just run short');
+
+  const providerGaveUp = toScoreViewModel({
+    ...doc,
+    result: { ...doc.result, short: true, runtimeShort: false, partial: true },
+  });
+  assert.equal(providerGaveUp.runtimeShort, false);
+  assert.equal(providerGaveUp.partial, true);
+});
+
 test('the view model never carries the visitor’s raw words', () => {
   const view = toScoreViewModel(doc);
   const serialised = JSON.stringify(view);

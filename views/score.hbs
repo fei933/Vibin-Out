@@ -27,7 +27,9 @@
   </p>
 
   {{#if score.short}}
-    <p class="note">This score came out shorter than usual &mdash; a few records couldn&rsquo;t be found.</p>
+    <p class="note">
+      This score came out shorter than usual{{#unless score.runtimeShort}} &mdash; a few records couldn&rsquo;t be found{{/unless}}.
+    </p>
   {{/if}}
 
   {{#each score.phases}}
