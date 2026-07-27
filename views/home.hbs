@@ -1,8 +1,18 @@
-<h1><span class="wordmark">vibin&rsquo; out</span></h1>
-<p class="tagline">Turn a scent into a soundtrack.</p>
+{{!--
+  Restraint is the first impression: a headline, the premise, one card with one
+  question, two dials and one button. Nothing else on the page.
+--}}
+<div class="home-intro">
+  <h1 class="headline">Describe what&rsquo;s in the air.</h1>
+  <p class="prose premise">
+    <span>Top notes open the room.</span>
+    <span>Heart notes give it feeling.</span>
+    <span>Base notes decide what stays.</span>
+  </p>
+</div>
 
-<form id="score-form" method="post" action="/api/score">
-  <p>
+<form id="score-form" class="card" method="post" action="/api/score">
+  <div class="field">
     <label for="scent">What does it smell like?</label>
     <textarea
       id="scent"
@@ -13,38 +23,39 @@
       placeholder="bergamot, black tea, cedar &mdash; a quiet bookshop on a rainy day"
     ></textarea>
     <span class="hint">Fragrance notes, a candle label, coffee-bag tasting notes &mdash; any scent language works.</span>
-  </p>
+  </div>
 
-  <fieldset>
+  <fieldset class="pill-set">
     <legend>How long?</legend>
-    {{#each durations}}
-      <label>
-        <input type="radio" name="duration" value="{{value}}" {{#if checked}}checked{{/if}} />
-        {{label}}
-      </label>
-    {{/each}}
+    <div class="pills">
+      {{#each durations}}
+        <label class="pill">
+          <input type="radio" name="duration" value="{{value}}" {{#if checked}}checked{{/if}} />
+          <span>{{label}}</span>
+        </label>
+      {{/each}}
+    </div>
   </fieldset>
 
-  <fieldset>
+  <fieldset class="pill-set">
     <legend>Discovery</legend>
-    {{#each discoveries}}
-      <label>
-        <input type="radio" name="discovery" value="{{value}}" {{#if checked}}checked{{/if}} />
-        {{label}}
-      </label>
-    {{/each}}
+    <div class="pills">
+      {{#each discoveries}}
+        <label class="pill">
+          <input type="radio" name="discovery" value="{{value}}" {{#if checked}}checked{{/if}} />
+          <span>{{label}}</span>
+        </label>
+      {{/each}}
+    </div>
   </fieldset>
 
-  <p>
-    <button type="submit" id="submit">Distill my playlist</button>
-  </p>
+  <button type="submit" id="submit" class="cta">Distill my playlist</button>
 </form>
 
 <p id="examples">
-  or try an example:
-  {{#each examples}}
-    <button type="button" class="example" data-scent="{{value}}">{{label}}</button>
-  {{/each}}
+  <span class="ex-label">or try an example:</span>
+  {{!-- kept on one line so no stray whitespace lands beside the separators --}}
+  {{#each examples}}<button type="button" class="example" data-scent="{{value}}">{{label}}</button>{{#unless @last}}<span class="sep" aria-hidden="true">&middot;</span>{{/unless}}{{/each}}
 </p>
 
 <p id="loading" hidden aria-live="polite">distilling your scent&hellip;</p>
