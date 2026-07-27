@@ -177,6 +177,138 @@ test('the client-credentials token is fetched once and reused', async () => {
   assert.equal(calls.token, 1);
 });
 
+/**
+ * Regression: AbortSignal.timeout() rejects with a TimeoutError, not an
+ * AbortError. Matching only on AbortError meant an expired deadline looked
+ * like a transient failure and every queued candidate kept retry-sleeping
+ * against a dead signal — the shape of a serverless timeout overrun.
+ */
+test('a deadline expiry ends the pass promptly instead of retry-sleeping', async () => {
+  const sleeps = [];
+  const controller = new AbortController();
+  const timeoutError = Object.assign(new Error('The operation timed out.'), {
+    name: 'TimeoutError',
+  });
+
+  const { fetchImpl, calls } = makeFetch([
+    () => {
+      controller.abort(timeoutError); // the deadline passes mid-flight
+      return Promise.reject(timeoutError);
+    },
+  ]);
+  const resolver = createSpotifyResolver(
+    deps(fetchImpl, { concurrency: 1, sleep: async (ms) => sleeps.push(ms) }),
+  );
+
+  const { tracks, misses, partial } = await resolver.resolve(
+    [
+      { title: 'One', artist: 'A' },
+      { title: 'Two', artist: 'B' },
+      { title: 'Three', artist: 'C' },
+    ],
+    { signal: controller.signal },
+  );
+
+  assert.equal(tracks.length, 0);
+  assert.equal(partial, true);
+  assert.deepEqual(sleeps, [], 'a dead signal must not be slept against');
+  assert.equal(calls.search, 1, 'the remaining candidates are abandoned, not retried');
+  assert.equal(misses.length, 3);
+});
+
+test('an already-expired signal returns immediately without any lookups', async () => {
+  const { fetchImpl, calls } = makeFetch([]);
+  const resolver = createSpotifyResolver(deps(fetchImpl));
+  const signal = AbortSignal.abort();
+
+  const { tracks, misses, partial } = await resolver.resolve(
+    [
+      { title: 'One', artist: 'A' },
+      { title: 'Two', artist: 'B' },
+    ],
+    { signal },
+  );
+
+  assert.equal(calls.search, 0);
+  assert.equal(tracks.length, 0);
+  assert.equal(misses.length, 2);
+  assert.equal(partial, true);
+});
+
+/**
+ * Regression: response.json() rejecting on a truncated 200 escaped the
+ * guarded call, rejected the concurrency pool, and turned one bad response
+ * into a 502 for the whole score.
+ */
+test('a truncated JSON body is one miss, not a failed request', async () => {
+  const { fetchImpl } = makeFetch([
+    {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+    },
+    ok(trackHit({ id: 'good', name: 'Two', artists: ['B'] })),
+  ]);
+  const resolver = createSpotifyResolver(deps(fetchImpl, { concurrency: 1 }));
+
+  const { tracks, misses, partial } = await resolver.resolve([
+    { title: 'One', artist: 'A' },
+    { title: 'Two', artist: 'B' },
+  ]);
+
+  assert.equal(tracks.length, 1, 'the healthy candidate still resolves');
+  assert.equal(tracks[0].spotifyId, 'good');
+  assert.equal(misses.length, 1);
+  assert.equal(misses[0].reason, 'error');
+  assert.equal(partial, false);
+});
+
+/**
+ * Regression: on a cold start every concurrent search saw an empty cache at
+ * the same moment and issued its own token POST.
+ */
+test('concurrent cold-start searches share a single token request', async () => {
+  let tokenCalls = 0;
+  const fetchImpl = async (url) => {
+    if (String(url).includes('accounts.spotify.com')) {
+      tokenCalls += 1;
+      await new Promise((r) => setTimeout(r, 5)); // a real request takes time
+      return ok({ access_token: 'tok', expires_in: 3600 });
+    }
+    return ok(trackHit({ name: 'Song', artists: ['Artist'] }));
+  };
+  const resolver = createSpotifyResolver(deps(fetchImpl, { concurrency: 4 }));
+
+  await resolver.resolve(
+    Array.from({ length: 8 }, (_, i) => ({ title: 'Song', artist: 'Artist', i })),
+  );
+
+  assert.equal(tokenCalls, 1, 'eight concurrent lookups must not mint eight tokens');
+});
+
+test('a failed token request does not wedge the cache shut', async () => {
+  let tokenCalls = 0;
+  const fetchImpl = async (url) => {
+    if (String(url).includes('accounts.spotify.com')) {
+      tokenCalls += 1;
+      if (tokenCalls === 1) return { ok: false, status: 503, json: async () => ({}) };
+      return ok({ access_token: 'tok', expires_in: 3600 });
+    }
+    return ok(trackHit({ name: 'Song', artists: ['Artist'] }));
+  };
+  const resolver = createSpotifyResolver(
+    deps(fetchImpl, { concurrency: 1, maxAttempts: 2 }),
+  );
+
+  const { tracks } = await resolver.resolve([{ title: 'Song', artist: 'Artist' }]);
+
+  assert.equal(tokenCalls, 2, 'the second attempt gets a fresh token request');
+  assert.equal(tracks.length, 1, 'and the lookup recovers');
+});
+
 test('isIndie is grounded in popularity, never in what the model claims', () => {
   assert.equal(isIndie(INDIE_POPULARITY_THRESHOLD - 1), true);
   assert.equal(isIndie(INDIE_POPULARITY_THRESHOLD), false);
