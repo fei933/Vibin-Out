@@ -1,92 +1,79 @@
-require('dotenv').config();
-const mongoose = require('mongoose'),
-	URLSlugs = require('mongoose-url-slugs'),
-  passportLocalMongoose = require('passport-local-mongoose'),
-  mongoose_fuzzy_searching = require('mongoose-fuzzy-searching');
-  
-const User = new mongoose.Schema({
-  username: {type: String, required: true},
-  password: {type: String, required: true},
-  favgenres: [{type: String, required: false}],
-  favscents: [{type: String, required: false}],
-  playlists:[{ type: mongoose.Schema.Types.ObjectId,ref: 'Playlist',required: false}]
-},{_id: true});
+/**
+ * Lazy, cached Mongo connection.
+ *
+ * Nothing connects at import time — the module is loaded on every cold start
+ * of the serverless function, and the home page must render with Mongo down.
+ * The connection is established on first use and the promise is cached for
+ * the life of the instance; a failed attempt clears the cache so the next
+ * request retries rather than inheriting a dead promise.
+ *
+ * There are no models any more. v2 stores two things: immutable score
+ * documents and rate-limit counters, both plain collections.
+ */
+import mongoose from 'mongoose';
 
-const Song = new mongoose.Schema({
-	name: {type: String, required: true},
-	artists: [{type: String, require: true}],
-    album: {type: String, required: true},
-    href: {type: String, required: false}, // from/for spotfy
-    external_urls: {type: String, required: false}, // from spotify
-    id: {type: String, required: false}, // from spotify
-    explicit : {type: Boolean, required: false}, // from spotify
-    popularity: {type: Number, required: false}, // from spotify
-	cover: {type: String, required: false}
-	
-}, {_id: true});
+export const SCORES_COLLECTION = 'scores';
+export const RATE_LIMITS_COLLECTION = 'rate_limits';
 
-const Product = new mongoose.Schema({
-  name: {type: String, required: true},
-  photo: {type: String, required:false},
-  category: {type:String, required: true},
-  brand: {type: String, required: false},
-  scent: [{type: String, required: false}],
-  description: {type: String, required: false}
-},{_id: true});
+export const SERVER_SELECTION_TIMEOUT_MS = 5000;
+const MAX_POOL_SIZE = 10; // per instance; Atlas M0 caps the cluster at 500
 
-const Playlist = new mongoose.Schema({
-  name: {type: String, required: true},
-  product: {type: mongoose.Schema.Types.ObjectId, ref:'Product'},
-  productname:{type: String, required: true},
-  username: {type: String},
-  user: {type: mongoose.Schema.Types.ObjectId, ref:'User'},
-  cover: {type: String, required: false},
-  contents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Song' }],
-  createdAt: {type: Date, required: true}
-},{_id: true});
+let connectionPromise = null;
+let indexesEnsured = false;
 
+export function isConfigured() {
+  return Boolean(process.env.MONGODB_URI);
+}
 
-User.plugin(passportLocalMongoose);
-Playlist.plugin(URLSlugs('name'));
-Playlist.plugin(mongoose_fuzzy_searching, { 
-  fields: [
-    {
-      name:'name',
-      minSize: 2,
-      weight: 5,
-    },
-    {
-      name:'contents',
-      keys:['name'],
-    }
-  ] 
-});
-Song.plugin(mongoose_fuzzy_searching, {fields:
-  [
-    {
-      name:"name",
-      minSize: 2,
-      weight: 1,
-    },
-    {
-      name:"artists",
-    }
-]
-});
+export async function connect() {
+  if (!isConfigured()) throw new Error('MONGODB_URI is not set');
+  if (connectionPromise) return connectionPromise;
 
+  connectionPromise = mongoose
+    .connect(process.env.MONGODB_URI, {
+      maxPoolSize: MAX_POOL_SIZE,
+      serverSelectionTimeoutMS: SERVER_SELECTION_TIMEOUT_MS,
+    })
+    .then((m) => m.connection)
+    .catch((error) => {
+      connectionPromise = null; // let the next request try again
+      throw error;
+    });
 
-mongoose.model('User', User,'User');
-mongoose.model('Product', Product, 'Product');
-mongoose.model('Playlist', Playlist, 'Playlist');
-mongoose.model('Song', Song, 'Song');
-// mongoose.connect('mongodb://localhost/playlistdb');
+  return connectionPromise;
+}
 
-// small pool: on Vercel each serverless instance holds its own pool, and
-// Atlas M0 caps total connections at 500
-mongoose.connect(process.env.MONGODB_URI, { maxPoolSize: 10 }, (err) => {
-  if (err) {
-    console.log(err);
-  } else {
-    console.log('connected to database'); 
+export async function getCollection(name) {
+  const connection = await connect();
+  if (!indexesEnsured) {
+    indexesEnsured = true;
+    ensureIndexes(connection).catch(() => {
+      indexesEnsured = false; // harmless to retry later
+    });
   }
-});
+  return connection.db.collection(name);
+}
+
+/** Best-effort; index creation must never block a request. */
+async function ensureIndexes(connection) {
+  await Promise.all([
+    connection.db.collection(SCORES_COLLECTION).createIndex({ slug: 1 }, { unique: true }),
+    connection.db
+      .collection(RATE_LIMITS_COLLECTION)
+      .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+  ]);
+}
+
+export function scoresCollection() {
+  return getCollection(SCORES_COLLECTION);
+}
+
+export function rateLimitsCollection() {
+  return getCollection(RATE_LIMITS_COLLECTION);
+}
+
+export async function disconnect() {
+  connectionPromise = null;
+  indexesEnsured = false;
+  await mongoose.disconnect();
+}
