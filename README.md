@@ -63,7 +63,26 @@ npm test
 Runs the Node built-in test runner (`node --test`) over `test/*.test.js` —
 unit coverage for the generation pipeline, schema validation, the rate
 limiter, slug generation, the Spotify track resolver, and server-rendered
-view output.
+view output. Offline, instant, and needs no credentials.
+
+```bash
+npx playwright install chromium   # first run only
+npm run test:e2e
+```
+
+One real end-to-end test: boots the app on an ephemeral port with your `.env`,
+drives a real browser from the home page through a live generation to the
+score page, and checks the caching headers and the 404 path. It spends one
+real LLM call and real Spotify lookups per run (~35s), which is why it is
+separate from `npm test`.
+
+```bash
+npm run eval            # all ten fixture scents
+npm run eval -- 3 7     # just those two
+```
+
+The ten-fixture eval — the product go/no-go gate. Also spends real calls, and
+writes a readable report with every tracklist for human judgement.
 
 ## project structure
 

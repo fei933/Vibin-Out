@@ -8,7 +8,9 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:e2e": "node scripts/e2e.mjs",
+    "eval": "env -u ANTHROPIC_API_KEY node --env-file=.env scripts/eval.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.103",
@@ -26,5 +28,8 @@
     "type": "git",
     "url": "git+https://github.com/fei933/Vibin-Out.git"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "playwright": "^1.62.0"
+  }
 }
