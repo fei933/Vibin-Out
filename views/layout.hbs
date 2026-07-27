@@ -1,7 +1,7 @@
 {{!--
-  Structural only. There is deliberately no styling here: the visual design
-  pass (apothecary-paper direction, see .impeccable.md) replaces the look
-  without needing to change this markup's shape.
+  The frame. Visual system: "liner notes from an apothecary" (.impeccable.md).
+  Fonts are self-hosted latin subsets under public/fonts; the three that render
+  above the fold are preloaded, the rest arrive with font-display: swap.
 --}}
 <!doctype html>
 <html lang="en">
@@ -10,21 +10,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{#if pageTitle}}{{pageTitle}} — vibin' out{{else}}vibin' out{{/if}}</title>
     <meta name="description" content="Turn a scent into a soundtrack." />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#F6F1E7" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <link rel="preload" href="/fonts/fraunces-var-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/newsreader-var-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/ibm-plex-mono-400-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/css/app.css" />
   </head>
-  <body>
-    <header>
-      <a href="/"><span class="wordmark">vibin&rsquo; out</span></a>
+  <body class="{{#if isHome}}is-home{{else}}is-inner{{/if}}">
+    <header class="page-header">
+      {{#if isHome}}
+        <span class="wordmark">vibin<span class="drop">&rsquo;</span> out</span>
+      {{else}}
+        <a class="wordmark-link" href="/"><span class="wordmark">vibin<span class="drop">&rsquo;</span> out</span></a>
+      {{/if}}
     </header>
 
     <main>
       {{{body}}}
     </main>
 
-    <footer>
-      <p>Top notes open the room. Heart notes give it feeling. Base notes decide what stays.</p>
-    </footer>
-
     {{#if isHome}}<script src="/js/home.js" defer></script>{{/if}}
     {{#if isScore}}<script src="/js/score.js" defer></script>{{/if}}
+    {{#if isScore}}<script src="/js/drydown.js" defer></script>{{/if}}
   </body>
 </html>
