@@ -11,7 +11,11 @@
     <div class="halo-ring">
       {{#each score.artwork}}
         <div class="halo-tile" style="--i: {{@index}}">
-          <img src="{{this}}" alt="" width="112" height="112" loading="lazy" decoding="async" />
+          {{! Not lazy: the halo is the first thing on the page, so a lazy cover
+              is a cover that pops in while someone is already looking at it.
+              The fixed-height container is what prevents layout shift, not the
+              load timing. }}
+          <img src="{{this}}" alt="" width="104" height="104" decoding="async" />
         </div>
       {{/each}}
     </div>
