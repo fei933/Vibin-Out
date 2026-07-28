@@ -116,6 +116,22 @@ test('the request asks for the tail of the ranked data', () => {
   assert.equal(params.get('mode'), 'hard', 'hard mode IS the popularity dial');
 });
 
+/**
+ * Both `+`-for-space and literal parens were confirmed live to reach this
+ * endpoint's auth gate, so this is belt-and-braces rather than a bug fix: a
+ * tag that arrived as `field+recording` would match nothing in the corpus
+ * while looking perfectly healthy from our side, and without a token we cannot
+ * tell the difference. One reading on the wire, no judgement calls.
+ */
+test('nothing structural is left literal in the query string', () => {
+  const url = buildRadioUrl([{ tag: 'field recording', weight: 2 }]);
+  const query = url.slice(url.indexOf('?') + 1);
+  assert.equal(query.includes('+'), false, 'a space is %20, never +');
+  assert.equal(/[()]/.test(query), false, 'parens are %28/%29');
+  // And it still decodes back to the prompt we meant.
+  assert.equal(new URL(url).searchParams.get('prompt'), 'tag:(field recording):2');
+});
+
 test('an empty tag list is a refusal to build a prompt at all', () => {
   assert.throws(() => buildRadioPrompt([]), (error) => error instanceof LbRadioError);
 });
