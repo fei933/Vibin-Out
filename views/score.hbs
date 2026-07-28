@@ -1,0 +1,75 @@
+<article id="score" data-slug="{{score.slug}}">
+  <header class="score-head">
+    <h1>{{score.title}}</h1>
+    {{! The model's reading of the scent — never the visitor's raw words. }}
+    <p class="interpretation">{{score.interpretation}}</p>
+    <p class="meta">
+      {{#if score.durationLabel}}{{score.durationLabel}}{{/if}}
+      {{#if score.discoveryLabel}} &middot; {{score.discoveryLabel}}{{/if}}
+      {{#if score.runtimeLabel}} &middot; {{score.runtimeLabel}} of music{{/if}}
+      &middot; {{score.trackCount}} tracks
+    </p>
+  </header>
+
+  {{! Arc bar: widths come from the phase weights, precomputed as percentages.
+      The share is stated in words and figures as well as width and colour. }}
+  <ol class="arc" aria-label="The scent's evolution across the playlist">
+    {{#each score.arc}}
+      <li class="arc-segment arc-{{name}}" style="width: {{pct}}%">
+        <span class="arc-swatch" aria-hidden="true"></span>
+        <span class="arc-label"><span class="arc-name">{{name}}</span><span class="arc-pct">{{pct}}%</span></span>
+      </li>
+    {{/each}}
+  </ol>
+
+  <p class="arc-caption">
+    Top notes open the room. Heart notes give it feeling. Base notes decide what stays.
+  </p>
+
+  {{#if score.short}}
+    <p class="note">
+      This score came out shorter than usual{{#unless score.runtimeShort}} &mdash; a few records couldn&rsquo;t be found{{/unless}}.
+    </p>
+  {{/if}}
+
+  {{#each score.phases}}
+    <section class="phase phase-{{name}}">
+      <div class="phase-head">
+        <p class="phase-eyebrow">{{name}} notes</p>
+        <h2>{{label}}</h2>
+        <p class="scent-notes">{{scentNotes}}</p>
+      </div>
+
+      <ol class="tracks">
+        {{#each tracks}}
+          <li class="track{{#if indie}} indie{{/if}}">
+            <div class="track-head">
+              <p class="track-name">{{title}}{{#if indie}}<span class="indie-find">indie find</span>{{/if}}</p>
+              <p class="track-artist">{{artist}}</p>
+              <p class="why">{{why}}</p>
+            </div>
+            <div class="track-embed">
+              <iframe
+                src="{{embedUrl}}?theme=0"
+                width="100%"
+                height="152"
+                loading="lazy"
+                title="{{title}} by {{artist}}"
+                allow="encrypted-media; clipboard-write; fullscreen; picture-in-picture"
+              ></iframe>
+            </div>
+          </li>
+        {{/each}}
+      </ol>
+    </section>
+  {{/each}}
+
+  <footer class="actions">
+    <div class="action-row">
+      <button type="button" id="copy-link" data-url="/score/{{score.slug}}" class="button-quiet">Copy link</button>
+      <button type="button" id="remix" data-slug="{{score.slug}}" class="button-quiet">Remix</button>
+    </div>
+    <p id="action-status" hidden aria-live="polite"></p>
+    <p class="closer"><a href="/">Keep the room going.</a></p>
+  </footer>
+</article>

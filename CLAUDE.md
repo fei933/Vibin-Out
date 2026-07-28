@@ -2,25 +2,28 @@
 
 ## Project Overview
 
-**Vibin' Out** is a Node.js/Express web app that lets users create Spotify-backed music playlists based on product scents (perfumes, candles, etc.). Users register, browse scented products, and generate/save playlists with music recommendations from the Spotify API.
+**Vibin' Out** (v2, "The Drydown Score") is a no-login, Node.js/Express app that turns typed scent language into a Spotify-backed playlist. A visitor describes a scent, picks a duration and a discovery mode, and an LLM (claude-sonnet-5 via the AI SDK) proposes a three-phase arc — top/heart/base notes — which is resolved against real Spotify tracks, given a per-track sensory justification, saved, and handed a permanent shareable URL at `/score/<slug>`.
 
-- **Stack:** Node.js, Express, Handlebars (hbs), MongoDB/Mongoose, Passport.js, Spotify Web API
-- **Previous deployment:** Heroku (free tier removed — currently down)
-- **Current target:** Vercel (free Hobby plan) — the app has been adapted to run as a serverless function; see Redeployment Plan below
+- **Stack:** Node.js 22 (ESM), Express, Handlebars (hbs), MongoDB Atlas, AI SDK v6 (`ai` + `@ai-sdk/anthropic`), Spotify Web API (client-credentials only)
+- **Deployment:** Vercel (free Hobby plan), serverless function; see Redeployment Plan below
+- **v1 (2022 login/products/playlists app) is gone** — this is a clean-slate rewrite; see Design Context below
 
 ---
 
 ## Environment Variables
 
-The app requires these environment variables (via `.env` file locally or platform config vars in production):
+The app requires these environment variables (via `.env` file locally, copied from `.env.example`, or platform config vars in production):
 
 | Variable | Description |
 |---|---|
-| `MONGODB_URI` | MongoDB connection string (e.g. MongoDB Atlas) — also used by the session store |
-| `CLIENT_ID` | Spotify API client ID |
+| `MONGODB_URI` | MongoDB connection string (Atlas) — stores score documents and rate-limit counters |
+| `CLIENT_ID` | Spotify API client ID (client-credentials only, no user OAuth) |
 | `CLIENT_SECRET` | Spotify API client secret |
-| `SESSION_SECRET` | Secret for signing session cookies (falls back to an insecure dev value locally) |
-| `PORT` | Server port for local/traditional hosting (defaults to 3000; unused on Vercel) |
+| `ANTHROPIC_API_KEY` | Direct Anthropic API key — local dev path |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key — production path (wins over `ANTHROPIC_API_KEY` when both are set; authenticated via OIDC automatically when running on Vercel, so this var may be unset there) |
+| `PORT` | Server port for local hosting (defaults to 3000; unused on Vercel) |
+
+`SESSION_SECRET` is gone — v2 has no auth, no sessions. See `.env.example` for the authoritative, commented list.
 
 ---
 
@@ -28,8 +31,8 @@ The app requires these environment variables (via `.env` file locally or platfor
 
 ```bash
 npm install
-# Create a .env file with the variables above
-node app.js      # or: npx nodemon app.js
+cp .env.example .env   # fill in MONGODB_URI, ANTHROPIC_API_KEY, CLIENT_ID, CLIENT_SECRET
+node app.js             # or: npm run dev (node --watch)
 ```
 
 App listens on `http://localhost:3000` by default.
@@ -42,30 +45,38 @@ App listens on `http://localhost:3000` by default.
 app.js              # Express app — exports the app; listens on a port only when run directly
 api/index.js        # Vercel serverless entry point (re-exports the Express app)
 vercel.json         # Rewrites all routes to the function; bundles views/ into it
-.npmrc              # legacy-peer-deps=true (mongoose-fuzzy-searching declares a mongoose 5 peer dep)
-auth.js             # Passport.js local strategy setup
-db.js               # Mongoose schemas (User, Song, Product, Playlist) + DB connection
-Procfile            # "web: node app.js" — used by Heroku-compatible platforms (Render, etc.)
+db.js               # Lazy Mongo connection; scores + rate_limits collections (no ORM models)
 routes/
-  index.js          # / login/register routes
-  list.js           # /list — browse/create playlists
-  list-item.js      # /list-item — add/remove songs
-  product-view.js   # /product-view — product browser
-  profile.js        # /profile — user profile + their playlists
-  spotify_auth.js   # Dead code — not imported anywhere; routes fetch their own tokens
-  scent_feature_mapping.json  # Maps scent tags to Spotify audio features
-views/              # Handlebars templates
+  index.js          # GET / — the input form
+  score.js           # POST /api/score (generate + save), GET /score/:slug (render a saved score)
+lib/
+  validation.js       # Request sanitizing/validation
+  generateScore.js    # The pipeline: LLM -> resolve/verify -> one combined backfill -> assemble
+  llm.js              # Provider selection (gateway vs direct Anthropic) + the callModel wrapper
+  prompt.js           # System/user prompt builders, seeded by scent_feature_mapping.json
+  schema.js            # zod schemas + phase/quota constants
+  trackResolver.js    # Provider interface turning {title, artist} into real tracks — Spotify today, LB Radio is the planned second implementation (see TODOS.md)
+  matchVerification.js # Guards against the model hallucinating a mismatched track
+  rateLimiter.js       # Fail-closed, Mongo-backed fixed-window limiter (per-IP + global)
+  scoreStore.js        # Save/find immutable score documents
+  slug.js               # Share-URL slug generation
+  viewModel.js           # Stored document -> template data contract (all derived values computed here, not in templates)
+  errors.js              # Error codes shared between the pipeline and routes
+  scent_feature_mapping.json  # Scent taxonomy, now a prompt seed (not a Spotify audio-feature map)
+views/
+  home.hbs, score.hbs, error.hbs, layout.hbs
 public/             # Static assets (CSS, client JS)
+test/               # node --test unit tests, one file per lib module, plus render.test.js
 ```
 
 ---
 
 ## Data Models
 
-- **User** — username, hashed password, favgenres, favscents, playlists[]
-- **Song** — name, artists, album, Spotify href/id/cover, popularity
-- **Product** — name, photo, category, brand, scent[]
-- **Playlist** — name, product ref, songs[], user ref, slug (auto-generated), fuzzy search indexes
+Two plain Mongo collections, no Mongoose schemas/models — see `db.js`:
+
+- **`scores`** — immutable documents: `slug` (unique), `input`, `options` (`duration`, `discovery`), `result` (title, interpretation, phases with tracks + sensory justifications, track/runtime counts), `createdAt`. A remix mints a new slug rather than mutating one.
+- **`rate_limits`** — fixed-window counters keyed `ip:<ip>:<windowStart>` and `global:<windowStart>`, with a TTL index on `expiresAt`.
 
 ---
 
@@ -73,13 +84,9 @@ public/             # Static assets (CSS, client JS)
 
 | Route | Description |
 |---|---|
-| `GET /` | Home / login page |
-| `GET /register` | Registration page |
-| `GET /list` | All public playlists |
-| `POST /list/create` | Create a new playlist |
-| `GET /list/:slug` | Individual playlist page with Spotify embed |
-| `GET /product-view` | Browse products with playlists |
-| `GET /profile` | Current user's profile and playlists |
+| `GET /` | Home — the scent input form |
+| `POST /api/score` | Validate input, rate-limit, run the generation pipeline, save, return `{slug}` (or a remix of an existing score via `{remix: <slug>}`) |
+| `GET /score/:slug` | Render a saved score page with Spotify embeds; cached at the edge forever (scores are immutable) |
 
 ---
 
@@ -93,15 +100,14 @@ The app has been adapted to run as a Vercel serverless function:
 
 - `app.js` exports the Express app; `app.listen` only runs when launched directly
 - `api/index.js` is the serverless entry point; `vercel.json` rewrites all routes to it and bundles `views/**` into the function (static assets in `public/` are served by Vercel's CDN directly)
-- Sessions are stored in MongoDB via `connect-mongo` (in-memory sessions don't survive serverless instance recycling)
+- No sessions — v2 has no auth. Mongo holds only score documents and rate-limit counters.
 - `db.js` caps the Mongo connection pool at 10 per instance (Atlas M0 allows 500 total)
-- `.npmrc` sets `legacy-peer-deps=true` so `npm install` succeeds despite `mongoose-fuzzy-searching`'s mongoose 5 peer dep
 
 Deploy steps:
 
 1. Sign up at https://vercel.com with GitHub → **Add New Project** → import `fei933/Vibin-Out`
 2. Framework preset: **Other** — no build command needed, defaults are fine
-3. Under **Environment Variables**, add: `MONGODB_URI`, `CLIENT_ID`, `CLIENT_SECRET`, `SESSION_SECRET` (generate one, e.g. `openssl rand -hex 32`)
+3. Under **Environment Variables**, add: `MONGODB_URI`, `CLIENT_ID`, `CLIENT_SECRET` (OIDC authenticates the AI Gateway automatically on Vercel, so `AI_GATEWAY_API_KEY` usually doesn't need to be set explicitly)
 4. Deploy — Vercel gives a free `*.vercel.app` domain
 5. Add that URL to the Spotify app's settings if OAuth redirect flows are ever enabled
 
@@ -111,7 +117,7 @@ The app still runs as a classic server (`node app.js`), so Render works unchange
 
 1. Sign up at https://render.com → New → **Web Service** → connect the GitHub repo
 2. Build command: `npm install` / Start command: `node app.js`
-3. Add the same four environment variables in the dashboard
+3. Add `MONGODB_URI`, `CLIENT_ID`, `CLIENT_SECRET`, and `ANTHROPIC_API_KEY` in the dashboard (no Vercel OIDC here, so the AI Gateway isn't auto-authenticated — use the direct Anthropic key)
 4. Free tier caveat: the service spins down after 15 min of inactivity (~30 s cold start)
 
 ### Database: MongoDB Atlas (Free M0 Cluster)
@@ -145,15 +151,9 @@ Credentials come from https://developer.spotify.com/dashboard:
 - Env vars added in Vercel (including `MONGODB_URI`)
 - Repo metadata in `package.json` fixed to point at `fei933/Vibin-Out` (was the old NYU class repo); `.gitignore` added
 
-### Current blocker — resume here
+### Atlas allowlist — fixed
 
-The site returns **500 `FUNCTION_INVOCATION_FAILED`**. Runtime logs show `MongooseServerSelectionError` + `SSL alert number 80` — that TLS alert is Atlas's signature for a **non-allowlisted client IP**. The connection string itself is fine. Fix:
-
-1. Atlas → **Network Access** → Add IP Address → **Allow access from anywhere** (`0.0.0.0/0`) → Confirm
-   - Do NOT tick the "temporary entry" option (it auto-deletes after 6h and the site would die again)
-   - Wait for status "Pending" → "Active" (~1 min)
-2. Vercel → Deployments → latest → ⋯ → **Redeploy** (crashed instances don't retry the DB connection on their own)
-3. Verify https://vibin-out.vercel.app loads
+The earlier `500 FUNCTION_INVOCATION_FAILED` / `SSL alert number 80` issue was a non-allowlisted client IP. `0.0.0.0/0` was added to Atlas Network Access and the site was redeployed; **https://vibin-out.vercel.app returns 200 as of 2026-07-27**. (That deploy is still the old, pre-rewrite app — `main` hasn't picked up the Drydown Score yet.)
 
 `MONGODB_URI` must use this exact shape (Atlas's copy button omits the DB name — it must be in the path or data goes to a DB named `test`; URL-encode special chars in the password):
 
@@ -163,23 +163,50 @@ mongodb+srv://feifeiw933_db_user:<url-encoded-password>@primary-cluster.fiobc3h.
 
 Note: Atlas **Service Accounts are the wrong tool** for app connections (they're for the Atlas Admin API / infrastructure automation). DB user + password in the URI is the correct auth method — the user was advised not to create one.
 
+### Current status — the v2 rewrite, branch `claude/drydown-v1`
+
+The Drydown Score rewrite is complete on `claude/drydown-v1` but not yet merged to `main` (merging auto-deploys). Blocked on:
+
+1. **Working credentials, to run the ten-fixture eval** (design-doc step 3.5 — the go/no-go gate before anything merges):
+   - Local `ANTHROPIC_API_KEY` is currently invalid; a valid key, or a working `AI_GATEWAY_API_KEY`, is needed
+   - Spotify `CLIENT_ID`/`CLIENT_SECRET` and `MONGODB_URI` also needed locally to run the eval end-to-end
+2. **The eval itself passing**
+3. **E2E + a deploy smoke test**
+4. **Three example scores**, then merge to `main`
+
 ### Remaining checklist
 
-- [ ] Add `0.0.0.0/0` to Atlas Network Access + redeploy (see blocker above)
-- [ ] Confirm Spotify API credentials are valid (`CLIENT_ID`/`CLIENT_SECRET` in Vercel)
-- [ ] Click through register → login → create playlist → view playlist on the live site
-- [ ] Update README with the live URL (https://vibin-out.vercel.app) once confirmed working
+- [ ] Get a working `ANTHROPIC_API_KEY` (or `AI_GATEWAY_API_KEY`) and local Spotify/Mongo credentials
+- [ ] Run and pass the ten-fixture eval (design-doc step 3.5, go/no-go gate)
+- [ ] E2E pass + deploy smoke test
+- [ ] Produce three example scores
+- [ ] Merge `claude/drydown-v1` to `main` (auto-deploys) and verify https://vibin-out.vercel.app serves the new app
 
-### Planned follow-up: UI critique
+### UI critique — done
 
-The user wants a UI critique using the **impeccable** skill (Anthropic's frontend-design skill, installed via `npx impeccable install` then `/impeccable init`). The install failed in the remote (web) sandbox — HTTP 403, the network policy blocks the skill download from GitHub — so run it in the local terminal session instead. Reference material: `documentation/*.png` holds the 2022 wireframes/screenshots; critique should compare those against fresh screenshots of the live site once it's up.
+The planned impeccable/teach-impeccable UI critique happened; it's what produced the v2 product direction and design system — see Design Context below and `.impeccable.md`.
 
 ---
 
 ## Notes
 
-- `npm start` runs `node app.js`; `npm run dev` runs nodemon for local development
+- `npm start` runs `node app.js`; `npm run dev` runs `node --watch app.js` for local development
 - Node version is pinned to `22.x` in `package.json` `engines` (current LTS; Vercel-supported)
-- The `package.json` lists many redundant transitive dependencies explicitly; this is fine but `npm install` may take longer than expected
-- Fuzzy search on Playlist/Song models (via `mongoose-fuzzy-searching`) creates extra index fields in MongoDB — expected behavior
-- Spotify client-credentials tokens expire after 1 hour — routes must fetch a fresh token per request (as `list.js` and `list-item.js` now do), never at module load
+- Tests run via `npm test` (`node --test`) — no separate test runner dependency
+- Spotify client-credentials tokens are fetched lazily and cached per instance until they expire, inside `lib/trackResolver.js` (`getToken`/`tokenCache`) — never fetched at module load
+
+---
+
+## Design Context
+
+*(Established 2026-07-27 via impeccable/teach-impeccable + gstack office-hours. Full spec in `.impeccable.md` — that file is the source of truth; this is the summary.)*
+
+- **Product direction (v2, "The Drydown Score"):** no-login scent→playlist generator. Design doc: `~/.gstack/projects/vibin-out/feief-main-design-20260727-133759.md`.
+- **Audience:** coffee shop/vintage store owners soundtracking their space; students soundtracking study sessions; strangers arriving on shared `/score/<slug>` URLs.
+- **Brand voice:** "an unusually perceptive record-store employee" — lowercase, literate, sensory tasting-note copy. Never hypey, never "AI-powered ✨".
+- **Aesthetic:** "liner notes from an apothecary" — warm editorial ink-on-paper. Paper `#F6F1E7`, ink `#211D17`. Phase accents citrine `#D9A441` → terracotta `#B8552F` → resin `#4A3B2A`; links vetiver `#3F5142`. Light theme.
+- **Type:** Fraunces (display/wordmark), Newsreader (prose), IBM Plex Mono 13px (track metadata + sensory justifications).
+- **Wordmark:** `vibin' out` — lowercase Fraunces, purely typographic, citrine apostrophe as the only color. Clean slate from the 2022 look.
+- **Signature interaction:** the drydown scroll (page accents shift citrine→terracotta→resin as you scroll top→heart→base notes); near-zero motion elsewhere; reduced-motion crossfade fallback.
+- **Standing bar:** WCAG AA; meaning never carried by color alone.
+- **Anti-references:** dark-neon AI aesthetics, glassmorphism, gradient text, Spotify-clone dark UI, card grids, and the 2022 design itself.

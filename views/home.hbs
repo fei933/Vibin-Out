@@ -1,24 +1,73 @@
-{{!-- {{#if user}}
-<p>
-Hi {{user.username}}. Let's go shopping!
+{{!--
+  Restraint is the first impression: a headline, the premise, one card with one
+  question, two dials and one button. Nothing else on the page.
+--}}
+<div class="home-intro">
+  <h1 class="headline">Describe what&rsquo;s in the air.</h1>
+  <p class="prose premise">
+    <span>Top notes open the room.</span>
+    <span>Heart notes give it feeling.</span>
+    <span>Base notes decide what stays.</span>
+  </p>
+</div>
+
+<form id="score-form" class="card" method="post" action="/api/score">
+  <div class="field">
+    <label for="scent">What does it smell like?</label>
+    <textarea
+      id="scent"
+      name="input"
+      rows="3"
+      maxlength="{{maxLength}}"
+      required
+      placeholder="bergamot, black tea, cedar &mdash; a quiet bookshop on a rainy day"
+    ></textarea>
+    <span class="hint">Fragrance notes, a candle label, coffee-bag tasting notes &mdash; any scent language works.</span>
+  </div>
+
+  <fieldset class="pill-set">
+    <legend>How long?</legend>
+    <div class="pills">
+      {{#each durations}}
+        <label class="pill">
+          <input type="radio" name="duration" value="{{value}}" {{#if checked}}checked{{/if}} />
+          <span>{{label}}</span>
+        </label>
+      {{/each}}
+    </div>
+  </fieldset>
+
+  <fieldset class="pill-set">
+    <legend>Discovery</legend>
+    <div class="pills">
+      {{#each discoveries}}
+        <label class="pill">
+          <input type="radio" name="discovery" value="{{value}}" {{#if checked}}checked{{/if}} />
+          <span>{{label}}</span>
+        </label>
+      {{/each}}
+    </div>
+  </fieldset>
+
+  <button type="submit" id="submit" class="cta">Distill my playlist</button>
+</form>
+
+<p id="examples">
+  <span class="ex-label">or try an example:</span>
+  {{!-- kept on one line so no stray whitespace lands beside the separators --}}
+  <a href="/score/ember-under-hide-11zrpq" class="example">Smoky oud</a><span class="sep" aria-hidden="true">&middot;</span><a href="/score/crema-to-cream-wr3r05" class="example">Espresso beans</a><span class="sep" aria-hidden="true">&middot;</span><a href="/score/coastal-linen-drift-zfhgnc" class="example">Ocean soap</a>
 </p>
-{{else}}
-<a href="/login">Login</a> or <a href="/register">Register</a> to create a grocery list.
-{{/if}} --}}
-<script>
-    function randomImg(width, height) {
-        document.getElementById('img-container').innerHTML = '<img src="https://source.unsplash.com/random/?perfume,music">';
-    }
-</script>
-<div id="'homeleft">
-<!--    <br/><br/><br/>-->
-    {{!-- <p>Welcome to the world of scent ; )</p> --}}
-    {{!-- <a href="/register">Join Now</a> --}}
-    {{!-- <form action="/register">
-    <input type="submit" value="Register" />
-    </form> --}}
-    {{!-- {{content}} --}}
+
+{{!--
+  The wait is real — up to two minutes for a 90-minute or deep-cuts score — so
+  the state says so instead of pretending. Line one is the anchor, line two is
+  written from the pills before the request leaves, line three crossfades
+  through what is actually happening. Both are filled by public/js/home.js,
+  which is where this page's copy already lives.
+--}}
+<div id="loading" hidden aria-live="polite">
+  <p class="loading-anchor">distilling your scent&hellip;</p>
+  <p class="loading-wait"></p>
+  <p class="loading-step"></p>
 </div>
-<div id="pic">
-    <img src="https://source.unsplash.com/random/?perfume,music" alt="home pic" width = "100%">
-</div>
+<p id="error" hidden role="alert"></p>

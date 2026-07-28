@@ -2,7 +2,8 @@
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
   "functions": {
     "api/index.js": {
-      "includeFiles": "views/**"
+      "includeFiles": "views/**",
+      "maxDuration": 300
     }
   }
 }

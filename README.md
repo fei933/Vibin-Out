@@ -1,157 +1,122 @@
-# Vibin' Out.
+# vibin' out — the drydown score
 
-link to the deployed website: https://vibinout.herokuapp.com/ (the website is currently down, still in the process of re-deploying it)
+Type the way something smells. Get back a three-act playlist.
 
-## Overview
+**Live:** https://vibin-out.vercel.app
 
-Loving your scent at home and want to play some music? Want to create and save song lists based on your favourite perfumes/candles? Vibin’ Out can be your #1 helper on that!
+## what it is
 
-Vibin’Out is a web app that allow users to register and create personal music preference profile and publish playlists with scent(product) and mood labels. After registering and logging in, users will be able to:
+Vibin' Out turns scent language into a Spotify-backed playlist called a
+**Drydown Score** — named for the way a fragrance unfolds over time. Describe
+a scent (a candle, a perfume, a room), pick a length and how adventurous the
+picks should be, and an LLM reads your description and proposes a three-phase
+arc:
 
-1. Add personal bio, music preference tags, and personal information
-2. Enhance their playlist based on songs that are already in the playlist, and
-3. Create playlist based on product's scents and your preferred genres!
+- **top notes** — the first impression
+- **heart notes** — the body of the scent
+- **base notes** — what lingers
 
-## Data Model
+Each phase gets real, playable tracks (resolved against Spotify's catalog,
+not just imagined by the model), and every track carries a short sensory
+justification for why it's there. The result is saved and given a permanent,
+shareable URL — `/score/<slug>` — with embedded Spotify players. There's no
+login, no account, and no user data beyond the score itself; a "remix" link
+lets a visitor regenerate a fresh take on someone else's score without typing
+anything.
 
-The application will store Users, Playlist, and Songs
+It's built for coffee-shop and vintage-store owners soundtracking a space,
+students soundtracking a study session, and strangers who land on a shared
+score link with no context needed.
 
-playlist title, playlist id, and the id of the songs inside the playlist
+## stack
 
-- users can have multiple playlists (via references)
-- each list have multiple songs inside them (by references as well)
+- **Node.js 22** (ESM, `"type": "module"`), **Express**
+- **Handlebars** (`hbs`) for server-rendered views
+- **MongoDB Atlas** — stores score documents and rate-limit counters (two
+  plain collections, no ORM models)
+- **AI SDK v6** (`ai` + `@ai-sdk/anthropic`) calling **claude-sonnet-5** —
+  direct Anthropic API locally, Vercel AI Gateway in production
+- **Spotify Web API** (client-credentials only) for track search and embeds
+- Deployed on **Vercel** as a serverless function; `vercel.json` rewrites
+  every route to `api/index.js`, which re-exports the Express app
 
-An Example User:
+## running locally
 
-```
-{
-  _id: new ObjectId("625f2671cc77a5f9866dff0f"),
-  username: 'feifei',
-  password: 'xxxxxxxx',
-  favgenres: ['indie','mandopop'],
-  playlists: [ObjectId("sdtjrytefdETWYREGd"),ObjectId("STHWUEGDFDhgeir")],
-  __v: 0
-}
-```
-
-An Example Playlist with Embedded Items:
-
-```
-{
-
-_id: new ObjectId("626c18969c21ef2aa324d963"),
-  name: 'Testing',
-  product: new ObjectId("626c18969c21ef2aa324d951"),
-  productname: 'Bibliothèque',
-  username: 'feifei',
-  user: new ObjectId("625f2671cc77a5f9866dff0f"),
-  contents: [
-    new ObjectId("626c18969c21ef2aa324d954"), // referring to tracks
-    new ObjectId("626c18969c21ef2aa324d955"),
-    new ObjectId("626c18969c21ef2aa324d956"),
-    new ObjectId("626c18969c21ef2aa324d957"),
-    new ObjectId("626c18969c21ef2aa324d958"),
-    new ObjectId("626c18969c21ef2aa324d959"),
-    new ObjectId("626c18969c21ef2aa324d95a")
-  ],
-  createdAt: 2022-04-29T16:55:50.934Z,
-  slug: 'testing',
-	name_fuzzy: Array,
-	contents_fuzzy: Array
-  __v: 0
-}
-
-``` 
-
-An Example Song:
-
-``` 
-{
-    _id: new ObjectId("626b4e874d0f42b3f004355d"),
-    name: 'This is the Last Time',
-    artists: [ 'The National' ],
-    album: 'Trouble Will Find Me',
-    href: 'https://api.spotify.com/v1/tracks/70ZuQywnmOpqcIiEnUA5yV',
-    external_urls: 'https://open.spotify.com/track/70ZuQywnmOpqcIiEnUA5yV',
-    id: '70ZuQywnmOpqcIiEnUA5yV',
-    explicit: false,
-    popularity: 54,
-    cover: 'https://i.scdn.co/image/ab67616d00001e02a91e8d79776c6f83fa22ce72',
-    __v: 0
-}
+```bash
+npm install
+cp .env.example .env   # fill in MONGODB_URI, ANTHROPIC_API_KEY, CLIENT_ID, CLIENT_SECRET
+node app.js             # or: npm run dev (node --watch)
 ```
 
-## [Link to Commented First Draft Schema](/db.js)
+The app listens on `http://localhost:3000` by default (`PORT` in `.env`).
+See `.env.example` for what each variable does — notably: rate limiting
+fails *closed*, so score generation refuses outright if Mongo is
+unreachable, and exactly one of `ANTHROPIC_API_KEY` / `AI_GATEWAY_API_KEY`
+needs to be set (the gateway wins if both are present).
 
-## Wireframes
+## running tests
 
-![documentation/Mainpage.png?raw=true](documentation/Mainpage.png?raw=true)
+```bash
+npm test
+```
 
-![documentation/RegistrationPage.png?raw=true](documentation/RegistrationPage.png?raw=true)
+Runs the Node built-in test runner (`node --test`) over `test/*.test.js` —
+unit coverage for the generation pipeline, schema validation, the rate
+limiter, slug generation, the Spotify track resolver, and server-rendered
+view output. Offline, instant, and needs no credentials.
 
-![documentation/PlaylistList.png?raw=true](documentation/PlaylistList.png?raw=true)
+```bash
+npx playwright install chromium   # first run only
+npm run test:e2e
+```
 
-![documentation/ProductLibrary.png?raw=true](documentation/ProductLibrary.png?raw=true)
+One real end-to-end test: boots the app on an ephemeral port with your `.env`,
+drives a real browser from the home page through a live generation to the
+score page, and checks the caching headers and the 404 path. It spends one
+real LLM call and real Spotify lookups per run (~35s), which is why it is
+separate from `npm test`.
 
-![documentation/PlaylistSlug.png?raw=true](documentation/PlaylistSlug.png?raw=true)
+```bash
+npm run eval            # all ten fixture scents
+npm run eval -- 3 7     # just those two
+```
 
-![documentation/UserProfile.png?raw=true](documentation/UserProfile.png?raw=true)
+The ten-fixture eval — the product go/no-go gate. Also spends real calls, and
+writes a readable report with every tracklist for human judgement.
 
+## project structure
 
+```
+app.js                        # Express app — exports it; only listens on a port when run directly
+api/index.js                  # Vercel serverless entry point (re-exports app.js)
+vercel.json                   # rewrites every route to api/index.js
+db.js                         # lazy Mongo connection; scores + rate_limits collections
+routes/
+  index.js                    # GET / — the input form
+  score.js                    # POST /api/score, GET /score/:slug
+lib/
+  validation.js                # request sanitizing/validation
+  generateScore.js             # the generation pipeline: LLM -> resolve -> backfill -> assemble
+  llm.js                       # provider selection + the one callModel wrapper around the AI SDK
+  prompt.js                    # system/user prompt builders (seeded by scent_feature_mapping.json)
+  schema.js                    # zod schemas + phase/quota constants
+  trackResolver.js             # provider interface for turning {title, artist} into real tracks (Spotify today)
+  matchVerification.js         # guards against the model hallucinating a mismatched track
+  rateLimiter.js                # fail-closed, Mongo-backed fixed-window limiter
+  scoreStore.js                # save/find score documents
+  slug.js                      # share-URL slug generation
+  viewModel.js                  # stored document -> template data contract
+  errors.js                    # error codes shared between the pipeline and routes
+  scent_feature_mapping.json    # scent taxonomy used to seed the prompt
+views/                         # home, score, error, layout (Handlebars)
+public/                        # static assets
+test/                          # node --test unit tests, one file per lib module (+ render.test.js)
+```
 
-/list - page for showing all playlists users created
+## design system
 
-/list/create - page for creating a new shopping list
-
-/list/:slug - individual presentation page for each playlist, contains the spotify plugin play button
-
-/product-view - page that shows all products that have playlists associated with them
-
-/profile - page for user profile and all playlists **the** user creates
-
-/login - page for user login (or connect to Spotify account)
-
-/register - page for creating account
-
-## Site map
-
-![documentation/sitemap.jpg?raw=true](documentation/sitemap.jpg?raw=true)
-
-## User Stories or Use Cases
-
-1. as non-registered user, I can register a new account with the site and log in to create playlists
-2. as a user, I can create new playlist by adding songs one by one, or based on artist recommendations
-3. as a user, I can view all of the playlists I've create in my profile
-4. as a user, I can add songs to existing playlists or append additional songs by entering new seeds (track, artist, genre) for song recommendations
-5. as a user, I can export the playlist by logging into spotify
-
-## Module/Concept Research Topics
-
-- (1 points) Intergrate user authentication
-    - Use passport for authetication
-- (4 points) Spotify API and https://github.com/thelinmichael/spotify-web-api-node
-    - Spotify API not only allow one to have access to song informations in Spotify, it also has features like
-        - recommendation and
-        - creating playlists with songs (on spotify)
-        - Spotify Play button (directly play songs on spotify)
-    - Spotify also provide a lot of quantitative data of the song’s mood
-- (2 points) iFrame API for Spotify song embedding
-- (1 points) [Fuzzy search](https://www.npmjs.com/package/mongoose-fuzzy-searching) in mongoose for playlist search among playlists and products
-- (1 point) Unsplash API for random default playlist cover
-    - Unsplash is a free photo websites [https://unsplash.com/developers](https://unsplash.com/developers)
-- (0.5-1 point) Google Fonts API
-
-
-## Annotations / References Used
-
-1. [passport.js authentication docs](http://passportjs.org/docs) - (add link to source code that was based on this)
-2. [https://www.npmjs.com/package/mongoose-fuzzy-searching](https://www.npmjs.com/package/mongoose-fuzzy-searching) (mongoose fuzzy search)
-3. Spotify Related Reference:
-    1. [https://developer.spotify.com/documentation/web-api/reference/#/operations/get-audio-analysis](https://developer.spotify.com/documentation/web-api/reference/#/operations/get-audio-analysis) - Get audio track analysis (and many other Spotify API references)
-    2. [https://developer.spotify.com/documentation/general/guides/authorization/client-credentials/](https://developer.spotify.com/documentation/general/guides/authorization/client-credentials/) Spotify Client Credential Flow Authorization
-    3. [https://developer.spotify.com/documentation/web-api/reference/#/operations/get-recommendations](https://developer.spotify.com/documentation/web-api/reference/#/operations/get-recommendations) The most important feature that the entire web app based on, contains references on the query and response format of getting recommendations
-    4. https://github.com/thelinmichael/spotify-web-api-node A Spotify API wrapper that includes features like providing recommendations, serach for tracks/artists, and search for genres.
-    5. [https://developer.spotify.com/documentation/embeds/](https://developer.spotify.com/documentation/embeds/) spotify embeds for play
-    6. [https://developer.spotify.com/documentation/embeds/guides/using-the-iframe-api/](https://developer.spotify.com/documentation/embeds/guides/using-the-iframe-api/) iframe-api
-    7. [https://developer.spotify.com/community/showcase/dubolt/](https://developer.spotify.com/community/showcase/dubolt/) - a similar app that use Spotify API recormmendations feature to help users explore new music
-4. [https://awik.io/generate-random-images-unsplash-without-using-api/](https://awik.io/generate-random-images-unsplash-without-using-api/) - potential way of using unsplash without using API
+The look is "liner notes from an apothecary" — warm editorial ink-on-paper,
+not another dark, glowing AI-generated interface. Paper and ink tones, a
+citrine → terracotta → resin accent shift as you scroll from top to base
+notes, Fraunces for display type and Newsreader for prose. Full spec and
+rationale live in `.impeccable.md`.
