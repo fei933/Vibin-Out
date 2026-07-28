@@ -25,6 +25,34 @@
     <span class="hint">Fragrance notes, a candle label, coffee-bag tasting notes &mdash; any scent language works.</span>
   </div>
 
+  {{!--
+    The second input mode, kept quiet on purpose: a hairline dashed frame, no
+    fill, no icon, and copy that offers rather than asks. It must never compete
+    with the textarea above it (.impeccable.md principle 6 — a textarea, an
+    optional photo drop, two pill rows, one button, nothing else).
+
+    The file input is visually hidden but still focusable, so the label is
+    clickable AND the control is reachable by keyboard; public/css/app.css
+    draws the focus ring on the zone via `#photo:focus-visible + .photo-drop`.
+  --}}
+  <div class="field photo-field" id="photo-field">
+    <input type="file" id="photo" accept="image/*" class="photo-input" />
+    <label class="photo-drop" id="photo-drop" for="photo">
+      <span class="photo-line">or show us the space &mdash; drop a photo</span>
+      <span class="photo-sub">photos are read, never kept.</span>
+    </label>
+
+    <div class="photo-preview" id="photo-preview" hidden>
+      <img class="photo-thumb" id="photo-thumb" alt="" />
+      <span class="photo-meta mono" id="photo-meta"></span>
+      <button type="button" class="photo-remove" id="photo-remove" aria-label="Remove the photo">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+
+    <p class="photo-note" id="photo-note" hidden role="status"></p>
+  </div>
+
   <fieldset class="pill-set">
     <legend>How long?</legend>
     <div class="pills">

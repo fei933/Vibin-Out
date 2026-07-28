@@ -11,14 +11,21 @@
   var loadingWait = loading.querySelector('.loading-wait');
   var loadingStep = loading.querySelector('.loading-step');
   var errorBox = document.getElementById('error');
+  var photo = window.VibinPhoto ? window.VibinPhoto.attach() : null;
 
   var MESSAGES = {
     cooldown:
       'The still is cooling down — we can only distill so many scents an hour. Try again a little later.',
-    refused: 'This one’s not for us. Try describing a smell.',
+    refused: 'This one’s not for us. Try describing a smell, or showing us a room.',
     generation_failed:
       'That didn’t distill. Your description is still here — give it another go.',
-    invalid_input: 'Give us a scent to work with — a few notes is plenty.',
+    invalid_input: 'Give us a scent to work with — a few notes, or a photo of the room.',
+    // The server's backstops. A visitor should never meet either: the photo is
+    // compressed to ~1MB before it leaves. If one does get through, it reads as
+    // a sentence rather than a 413.
+    photo_too_large: 'That photo came through too heavy. Try a smaller one.',
+    invalid_photo: 'That image didn’t come through. A JPEG or PNG works.',
+    photo_working: 'Still reading the photo — one moment, then try again.',
     offline: 'No connection to the still. Check your network and try again.',
     timeout:
       'That one never came back. Your description is still here — try again, or ask for a shorter score.',
@@ -69,10 +76,16 @@
    * coming back at all. */
   var TIMEOUT_MS = 270000;
 
-  function tierFor(duration, discovery) {
-    if (duration === 90 || discovery === 'deepcuts') return 'long';
-    if (duration === 60) return 'medium';
-    return 'short';
+  /* A photo run adds a vision call's worth of reading to the front of the
+   * generation — measured at roughly +8-12s against the same pills — so it
+   * moves up one tier rather than getting its own copy. The promise on screen
+   * stays a floor, which is what makes it honest. */
+  function tierFor(duration, discovery, hasPhoto) {
+    var tier = 'short';
+    if (duration === 90 || discovery === 'deepcuts') tier = 'long';
+    else if (duration === 60) tier = 'medium';
+    if (!hasPhoto) return tier;
+    return tier === 'short' ? 'medium' : 'long';
   }
 
   /* Read live rather than cached: a visitor can change the setting mid-wait. */
@@ -139,6 +152,7 @@
     Array.prototype.forEach.call(form.querySelectorAll('input'), function (input) {
       input.disabled = busy;
     });
+    if (photo) photo.setDisabled(busy);
     if (!busy) endWait();
   }
 
@@ -146,18 +160,28 @@
     event.preventDefault();
     errorBox.hidden = true;
 
+    // A photo mid-compression is a fraction of a second away; asking again is
+    // better than sending the request without the picture the visitor chose.
+    if (photo && photo.busy()) {
+      showError('photo_working');
+      return;
+    }
+
     var data = new FormData(form);
+    var photoUrl = photo ? photo.dataUrl() : null;
     var payload = {
       input: String(data.get('input') || ''),
       duration: Number(data.get('duration')),
       discovery: String(data.get('discovery') || 'balanced'),
     };
-    if (!payload.input.trim()) {
+    if (photoUrl) payload.photo = photoUrl;
+    // Text OR photo OR both — the same rule the server enforces.
+    if (!payload.input.trim() && !photoUrl) {
       showError('invalid_input');
       return;
     }
 
-    beginWait(tierFor(payload.duration, payload.discovery));
+    beginWait(tierFor(payload.duration, payload.discovery, Boolean(photoUrl)));
     setBusy(true);
 
     var controller = window.AbortController ? new window.AbortController() : null;

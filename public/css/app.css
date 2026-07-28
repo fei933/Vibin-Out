@@ -578,6 +578,149 @@ a:hover {
   margin-top: 10px;
 }
 
+/* --- The optional photo drop ----------------------------------------------
+   Second input mode, deliberately quieter than the textarea above it: a
+   hairline DASHED frame (the only dashed rule in the system, so it reads as
+   "optional, droppable" without a fill, an icon or a colour), and no
+   background of its own — a card inside a card is what principle 6 forbids. */
+.photo-field {
+  margin-top: 24px;
+}
+
+/* Visually hidden but still focusable — the label does the clicking, the input
+   does the keyboard. `display: none` would take it out of the tab order. */
+.photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.photo-drop {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 14px 16px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 2px;
+  cursor: pointer;
+  transition:
+    border-color 150ms var(--ease),
+    color 150ms var(--ease);
+}
+
+.photo-line {
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.photo-sub {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.photo-drop:hover {
+  border-color: var(--ink-soft);
+}
+
+/* Dragging over: the frame closes to a solid line. A shape change, not a tint,
+   so it survives greyscale and colour-blind vision. */
+.photo-drop.is-over {
+  border-style: solid;
+  border-color: var(--link);
+}
+
+.photo-input:focus-visible + .photo-drop {
+  outline: 2px solid var(--link);
+  outline-offset: 3px;
+}
+
+.photo-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+}
+
+.photo-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: var(--rule);
+}
+
+/* While compressing there is no image yet — an <img> with no src would draw a
+   broken-file glyph. */
+.photo-thumb:not([src]) {
+  display: none;
+}
+
+.photo-meta {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.photo-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 150ms var(--ease);
+}
+
+.photo-remove:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.photo-remove:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+
+/* Same language as the submit-error block below: a heavier rule and the ink
+   weight, never a red light — the palette has no alarm colour. */
+.photo-note:not([hidden]) {
+  display: block;
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: 52ch;
+}
+
 .pill-set {
   margin-top: 40px;
 }

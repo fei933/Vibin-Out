@@ -78,6 +78,9 @@
     </main>
 
     <script src="/js/theme.js" defer></script>
+    {{!-- photo.js defines window.VibinPhoto; deferred scripts run in order, so
+          it is loaded before home.js, which attaches it. --}}
+    {{#if isHome}}<script src="/js/photo.js" defer></script>{{/if}}
     {{#if isHome}}<script src="/js/home.js" defer></script>{{/if}}
     {{#if isScore}}<script src="/js/score.js" defer></script>{{/if}}
     {{#if isScore}}<script src="/js/drydown.js" defer></script>{{/if}}
