@@ -178,6 +178,7 @@ The Drydown Score rewrite is complete on `claude/drydown-v1` but not yet merged 
 
 - [ ] Get a working `ANTHROPIC_API_KEY` (or `AI_GATEWAY_API_KEY`) and local Spotify/Mongo credentials
 - [ ] Run and pass the ten-fixture eval (design-doc step 3.5, go/no-go gate)
+- [ ] Restyle `claude/drydown-v1` to the revised neutral system (v2.1 Amendments §1): mist/slate themes + dark-mode toggle, tonal drydown scroll, halo carousel (needs `albumArt` in TrackResolver + score schema), share kit (QR + save-as-card)
 - [ ] E2E pass + deploy smoke test
 - [ ] Produce three example scores
 - [ ] Merge `claude/drydown-v1` to `main` (auto-deploys) and verify https://vibin-out.vercel.app serves the new app
@@ -204,9 +205,10 @@ The planned impeccable/teach-impeccable UI critique happened; it's what produced
 - **Product direction (v2, "The Drydown Score"):** no-login scent→playlist generator. Design doc: `~/.gstack/projects/vibin-out/feief-main-design-20260727-133759.md`.
 - **Audience:** coffee shop/vintage store owners soundtracking their space; students soundtracking study sessions; strangers arriving on shared `/score/<slug>` URLs.
 - **Brand voice:** "an unusually perceptive record-store employee" — lowercase, literate, sensory tasting-note copy. Never hypey, never "AI-powered ✨".
-- **Aesthetic:** "liner notes from an apothecary" — warm editorial ink-on-paper. Paper `#F6F1E7`, ink `#211D17`. Phase accents citrine `#D9A441` → terracotta `#B8552F` → resin `#4A3B2A`; links vetiver `#3F5142`. Light theme.
-- **Type:** Fraunces (display/wordmark), Newsreader (prose), IBM Plex Mono 13px (track metadata + sensory justifications).
-- **Wordmark:** `vibin' out` — lowercase Fraunces, purely typographic, citrine apostrophe as the only color. Clean slate from the 2022 look.
-- **Signature interaction:** the drydown scroll (page accents shift citrine→terracotta→resin as you scroll top→heart→base notes); near-zero motion elsewhere; reduced-motion crossfade fallback.
-- **Standing bar:** WCAG AA; meaning never carried by color alone.
-- **Anti-references:** dark-neon AI aesthetics, glassmorphism, gradient text, Spotify-clone dark UI, card grids, and the 2022 design itself.
+- **Aesthetic (revised 2026-07-27, supersedes apothecary-warm):** "gallery in morning fog" — neutral, minimal, editorial. Light "mist" (`#FAFAF7` bg, `#1C1C1A` ink) + dark "slate" (`#161614` bg, `#E6E6E1` text), both v1, visible toggle + `prefers-color-scheme` default, all colors as CSS custom properties. Phase accents are tonal depth, not hue: vapor `#A8ADA6` → stone `#70756E` → char `#3A3E38` (inverted ramp in dark). Links sage-slate `#4A5250`/`#A9B3AE`. Album artwork is the only saturated color on the page.
+- **Type:** Fraunces (display/wordmark), Newsreader (prose), IBM Plex Mono 13px (track metadata + sensory justifications). Unchanged by the palette revision.
+- **Wordmark:** `vibin' out` — lowercase Fraunces, purely typographic, sage-slate apostrophe as the only accent. Clean slate from the 2022 look.
+- **Signature interactions (two, no more):** the drydown scroll (accents deepen vapor→stone→char as you scroll top→heart→base notes) and the slowly rotating 3D album-art halo carousel atop the score page; near-zero motion elsewhere; reduced-motion fallbacks for both.
+- **v2.1 feature amendments (2026-07-27, design doc "v2.1 Amendments" section):** share kit (client-side QR of the score URL + canvas-rendered "save as card" summary image); halo carousel (album art from the existing Spotify search response, stored as `albumArt` per track); tiered Spotify export via PKCE (dev-mode 5-user cap — falls back to copyable tracklist + deep links, tokens browser-only); photo input promoted to v1.5 with hard client-side compression (≤1568px long edge, ~1MB cap, photos never persisted); positioning = structured/reasoned/permanent-artifact vs Spotify's ephemeral in-app AI playlists.
+- **Standing bar:** WCAG AA in both themes; meaning never carried by color alone.
+- **Anti-references:** the retired warm-apothecary cast, dark-neon AI aesthetics, glassmorphism, gradient text, Spotify-clone dark UI (`#121212` + green), card grids, and the 2022 design itself.
