@@ -84,6 +84,52 @@ npm run eval -- 3 7     # just those two
 The ten-fixture eval — the product go/no-go gate. Also spends real calls, and
 writes a readable report with every tracklist for human judgement.
 
+### testing the Spotify export (https + a real login)
+
+The export ("make this playlist yours") uses Authorization Code + PKCE **in the
+browser** — the token lives in `sessionStorage` and this server never sees it.
+Spotify no longer accepts `http://` redirect URIs, so the ordinary dev server
+cannot complete the round trip. Use the HTTPS one:
+
+```bash
+npm run dev:https        # → https://localhost:3000
+```
+
+On first run it makes a self-signed certificate in `certs/` with `openssl`
+(CN=localhost, SAN `DNS:localhost,IP:127.0.0.1`, 825 days — the maximum
+browsers accept). **Your browser will warn about it once**; that warning is
+correct, and "proceed anyway" is the right answer for a certificate you just
+made on your own machine. If you would rather not see it at all, run
+`mkcert localhost 127.0.0.1` inside `certs/`, name the output `localhost.key`
+and `localhost.crt`, and the script will use those instead. `certs/` is
+git-ignored.
+
+Both redirect URIs are already registered in the Spotify dashboard:
+
+```
+https://vibin-out.vercel.app/callback
+https://localhost:3000/callback
+```
+
+Port 3000 matters — `PORT` is respected, but any other port produces an origin
+Spotify has never heard of, and it answers a bad `redirect_uri` with its own
+error page rather than redirecting back.
+
+Then open a score, press **make this playlist yours**, and log in. What should
+happen: Spotify asks for one permission (*create private playlists*), you land
+back on the score for a moment, and a private playlist appears in your library
+with the score's title, its interpretation and permalink as the description,
+and the tracks in drydown order.
+
+**The five-user wall is the expected case, not a bug.** Spotify caps dev-mode
+apps at five OAuth users. Anyone not on the dashboard allowlist gets a `403`
+(or an `access_denied` redirect), and the page falls straight into **tier 2**:
+the same tracklist, copyable as plain text, with a keyless
+`open.spotify.com/search/…` link per record. Tier 2 is also what the page
+becomes permanently if the Spotify key ever dies, and it renders server-side —
+plain anchors, no script, no token. To see it without a Spotify account at all,
+unset `CLIENT_ID` and reload a score.
+
 ## project structure
 
 ```
@@ -94,6 +140,7 @@ db.js                         # lazy Mongo connection; scores + rate_limits coll
 routes/
   index.js                    # GET / — the input form
   score.js                    # POST /api/score, GET /score/:slug
+  callback.js                 # GET /callback — the PKCE return hop; renders a page, holds no token
 lib/
   validation.js                # request sanitizing/validation
   generateScore.js             # the generation pipeline: LLM -> resolve -> backfill -> assemble
@@ -106,6 +153,7 @@ lib/
   scoreStore.js                # save/find score documents
   slug.js                      # share-URL slug generation
   viewModel.js                  # stored document -> template data contract
+  spotifyExport.js              # keyless search deep links + the plain-text tracklist (tier 2)
   errors.js                    # error codes shared between the pipeline and routes
   scent_feature_mapping.json    # scent taxonomy used to seed the prompt
 views/                         # home, score, error, layout (Handlebars)

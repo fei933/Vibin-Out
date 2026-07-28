@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
+    "dev:https": "node --watch scripts/https-dev.mjs",
     "test": "node --test",
     "test:e2e": "node scripts/e2e.mjs",
     "check:photo": "env -u ANTHROPIC_API_KEY node scripts/photo-check.mjs",

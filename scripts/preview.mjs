@@ -11,6 +11,7 @@
  *   /score/rain-through-cedar-x3k9qf   → the score page (with cover art)
  *   /score/...?short=1                 → the "shorter than usual" variant
  *   /score/...?art=0                   → artwork: [] — the carousel must be absent
+ *   /score/...?key=0                   → no CLIENT_ID — the export's tier-2 list, alone
  *   /anything-else                     → the error page (the app's own 404)
  *
  * The Spotify IDs below are real, so the embeds actually load.
@@ -195,8 +196,18 @@ preview.get('/score/:slug', (req, res, next) => {
     },
   };
   const score = toScoreViewModel(doc);
-  app.render('score', { score, pageTitle: score.title, isScore: true }, (error, html) =>
-    error ? next(error) : res.type('html').send(html),
+  app.render(
+    'score',
+    {
+      score,
+      pageTitle: score.title,
+      isScore: true,
+      // `?key=0` renders the export's key-death state: no client id, so no
+      // button, and the tier-2 tracklist stands alone. It is the one state
+      // that cannot be reached by clicking, and the one most worth looking at.
+      spotifyClientId: req.query.key === '0' ? '' : process.env.CLIENT_ID || 'preview-client-id',
+    },
+    (error, html) => (error ? next(error) : res.type('html').send(html)),
   );
 });
 
