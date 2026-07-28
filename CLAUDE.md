@@ -19,8 +19,8 @@ The app requires these environment variables (via `.env` file locally, copied fr
 | `MONGODB_URI` | MongoDB connection string (Atlas) — stores score documents and rate-limit counters |
 | `CLIENT_ID` | Spotify API client ID (client-credentials only, no user OAuth) |
 | `CLIENT_SECRET` | Spotify API client secret |
-| `ANTHROPIC_API_KEY` | Direct Anthropic API key — local dev path |
-| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key — production path (wins over `ANTHROPIC_API_KEY` when both are set; authenticated via OIDC automatically when running on Vercel, so this var may be unset there) |
+| `ANTHROPIC_API_KEY` | Direct Anthropic API key — production path (set in Vercel env) and local dev path |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key — optional, wins over `ANTHROPIC_API_KEY` when set. Not the default: the gateway service requires a credit card on file. Without either key, bare OIDC on Vercel (`VERCEL` env var) falls back to the gateway |
 | `PORT` | Server port for local hosting (defaults to 3000; unused on Vercel) |
 
 `SESSION_SECRET` is gone — v2 has no auth, no sessions. See `.env.example` for the authoritative, commented list.
@@ -107,7 +107,7 @@ Deploy steps:
 
 1. Sign up at https://vercel.com with GitHub → **Add New Project** → import `fei933/Vibin-Out`
 2. Framework preset: **Other** — no build command needed, defaults are fine
-3. Under **Environment Variables**, add: `MONGODB_URI`, `CLIENT_ID`, `CLIENT_SECRET` (OIDC authenticates the AI Gateway automatically on Vercel, so `AI_GATEWAY_API_KEY` usually doesn't need to be set explicitly)
+3. Under **Environment Variables**, add: `MONGODB_URI`, `CLIENT_ID`, `CLIENT_SECRET`, `ANTHROPIC_API_KEY` (production uses the direct Anthropic key; the AI Gateway is only used if `AI_GATEWAY_API_KEY` is set, since the gateway service requires a credit card on file)
 4. Deploy — Vercel gives a free `*.vercel.app` domain
 5. Add that URL to the Spotify app's settings if OAuth redirect flows are ever enabled
 

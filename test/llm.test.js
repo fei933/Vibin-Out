@@ -5,8 +5,13 @@ import { ANTHROPIC_MODEL, callModel, GATEWAY_MODEL, selectModel, selectProvider 
 import { llmScoreSchema } from '../lib/schema.js';
 import { buildScorePrompt, buildSystemPrompt } from '../lib/prompt.js';
 
-test('provider selection prefers the gateway, falls back to Anthropic, else refuses', () => {
+test('provider selection prefers explicit keys over implicit OIDC, else refuses', () => {
   assert.equal(selectProvider({ AI_GATEWAY_API_KEY: 'k', ANTHROPIC_API_KEY: 'a' }), 'gateway');
+  assert.equal(
+    selectProvider({ ANTHROPIC_API_KEY: 'a', VERCEL: '1' }),
+    'anthropic',
+    'an explicit Anthropic key must win over bare OIDC — the gateway requires a credit card on file',
+  );
   assert.equal(selectProvider({ VERCEL: '1' }), 'gateway', 'OIDC authenticates the gateway on Vercel');
   assert.equal(selectProvider({ ANTHROPIC_API_KEY: 'a' }), 'anthropic');
   assert.equal(selectProvider({}), null);
