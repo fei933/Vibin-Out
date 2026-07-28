@@ -145,6 +145,39 @@ test('the view model never carries the visitor’s raw words', () => {
   assert.equal(view.interpretation, 'Cool mineral air settling into dry wood.');
 });
 
+test('the export gets a flat, ordered view of the same tracks', () => {
+  const view = toScoreViewModel(doc);
+
+  // Playing order across the phases — top first — which is the order the
+  // records go into a Spotify playlist and the order the tier-2 list reads.
+  assert.deepEqual(
+    view.exportTracks.map((t) => t.spotifyId),
+    ['a1', 'b1'],
+  );
+  assert.deepEqual(view.exportTracks[0], {
+    title: 'A',
+    artist: 'Ay',
+    spotifyId: 'a1',
+    searchUrl: 'https://open.spotify.com/search/A%20Ay',
+  });
+  // The same URL is on the nested track too, so the template can reach it
+  // either way without a second computation.
+  assert.equal(view.phases[0].tracks[0].searchUrl, view.exportTracks[0].searchUrl);
+});
+
+test('the tracklist is the clipboard text, verbatim', () => {
+  assert.equal(toScoreViewModel(doc).tracklist, 'A — Ay\nB — Bee');
+});
+
+test('a score with no tracks exports an empty list, never undefined', () => {
+  const empty = toScoreViewModel({
+    ...doc,
+    result: { ...doc.result, phases: doc.result.phases.map((p) => ({ ...p, tracks: [] })) },
+  });
+  assert.deepEqual(empty.exportTracks, []);
+  assert.equal(empty.tracklist, '');
+});
+
 test('a missing document renders as a 404 rather than an empty score', () => {
   assert.equal(toScoreViewModel(null), null);
   assert.equal(toScoreViewModel({ slug: 'x' }), null);
