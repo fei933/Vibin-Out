@@ -145,14 +145,28 @@
     errorBox.hidden = false;
   }
 
+  /* The button is unavailable while a generation is running OR while a photo is
+   * still being read. Compressing a 12-megapixel photo is under a second on a
+   * laptop and a couple on an old phone — long enough for a fast tapper to hit
+   * submit, and a disabled button is a kinder answer to that than an error
+   * message telling them to try again. */
+  var generating = false;
+
+  function syncSubmit() {
+    submit.disabled = generating || Boolean(photo && photo.busy());
+  }
+
+  if (photo) photo.onChange(syncSubmit);
+
   function setBusy(busy) {
+    generating = busy;
     loading.hidden = !busy;
-    submit.disabled = busy;
     textarea.readOnly = busy;
     Array.prototype.forEach.call(form.querySelectorAll('input'), function (input) {
       input.disabled = busy;
     });
     if (photo) photo.setDisabled(busy);
+    syncSubmit();
     if (!busy) endWait();
   }
 
@@ -160,8 +174,10 @@
     event.preventDefault();
     errorBox.hidden = true;
 
-    // A photo mid-compression is a fraction of a second away; asking again is
-    // better than sending the request without the picture the visitor chose.
+    // Belt and braces: the button is already disabled while a photo is being
+    // read, but a form can be submitted by other means than clicking it, and
+    // sending the request without the picture the visitor chose is the one
+    // outcome that must not happen.
     if (photo && photo.busy()) {
       showError('photo_working');
       return;
