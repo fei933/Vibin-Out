@@ -82,11 +82,15 @@ const render = (view, locals) =>
     app.render(view, locals, (error, html) => (error ? reject(error) : resolve(html)));
   });
 
-const renderScore = (source) =>
+const renderScore = (source, extra = {}) =>
   render('score', {
     score: toScoreViewModel(source),
     pageTitle: 'Rain Through Cedar',
     isScore: true,
+    // The default is the working case: a client id was injected, so tier 1 is
+    // on offer. Individual tests override it to prove the key-death path.
+    spotifyClientId: 'client-abc',
+    ...extra,
   });
 
 const count = (html, pattern) => (html.match(pattern) ?? []).length;
@@ -148,6 +152,132 @@ test('the share block ships with every score', async () => {
   assert.match(html, /id="qr-plate" hidden/);
   assert.match(html, /\/js\/vendor\/qrcode\.js/);
   assert.match(html, /\/js\/share\.js/);
+});
+
+/* --- the tiered Spotify export (design doc v2.1 §4) ----------------------- */
+
+test('the export offers tier 1 when a client id was injected', async () => {
+  const html = await renderScore(doc);
+
+  assert.match(html, /id="export"/);
+  assert.match(html, /data-client-id="client-abc"/);
+  assert.match(html, /id="export-start"/);
+  assert.match(html, /Make this playlist yours/);
+  assert.match(html, /id="export-done" class="export-done" hidden/);
+  assert.match(html, /\/js\/export\.js" type="module"/);
+});
+
+/**
+ * The key-death path (TODOS #2), and the state every visitor outside the
+ * five-user allowlist ends up in. No id means no button and no script work:
+ * the list IS the feature, and it is plain server-rendered anchors that need
+ * no key, no token and no JavaScript.
+ */
+test('with no client id the tier-2 list is the whole feature, unhidden', async () => {
+  const html = await renderScore(doc, { spotifyClientId: '' });
+
+  assert.match(html, /id="export"/);
+  assert.match(html, /data-client-id=""/);
+  assert.ok(!html.includes('id="export-start"'), 'nothing to authorize, so no button');
+  assert.match(html, /id="export-fallback" class="export-fallback">/, 'not hidden');
+  assert.match(html, /Each one opens in Spotify/);
+});
+
+test('with a client id the tier-2 list is present but held back', async () => {
+  const html = await renderScore(doc);
+  assert.match(html, /id="export-fallback" class="export-fallback" hidden/);
+  // Present, not absent: the fallback must already be in the DOM when a call
+  // to Spotify fails, so revealing it is one attribute and never a fetch.
+  assert.match(html, /id="export-copy"/);
+  assert.match(html, /id="export-text"[^>]*readonly/);
+  // The clipboard reports next to its own button; the section's line above the
+  // list is reserved for what happened to the export itself.
+  assert.match(html, /id="export-copy-note"[^>]*hidden role="status"/);
+});
+
+/**
+ * The paragraph that offers tier 1 has to stop offering it the moment a
+ * structural wall removes the button, or tier 2 reads as a broken promise. The
+ * replacement string is the same one the keyless page ships with, carried on
+ * the element so there is one copy of it rather than two.
+ */
+test('the export lede carries its own tier-2 replacement', async () => {
+  const withKey = await renderScore(doc);
+  const withoutKey = await renderScore(doc, { spotifyClientId: '' });
+
+  const tier2 = 'The records, in order. Each one opens in Spotify; the whole list copies in a tap.';
+  assert.match(withKey, /id="export-lede" data-tier2="[^"]+"/);
+  assert.ok(withKey.includes(`data-tier2="${tier2}"`), 'the swap text is on the element');
+  assert.match(withKey, /Put this in your own Spotify as a private playlist/);
+
+  // With no key the server has already rendered that same sentence as the lede.
+  assert.ok(!withoutKey.includes('Put this in your own Spotify'));
+  assert.match(withoutKey, /The records, in order\./);
+});
+
+test('the tier-2 list is keyless deep links, one per track, in playing order', async () => {
+  const html = await renderScore(docWithArt);
+  const view = toScoreViewModel(docWithArt);
+
+  assert.equal(count(html, /class="export-list"/g), 1);
+  assert.equal(count(html, /<li>\s*<a href="https:\/\/open\.spotify\.com\/search\//g), 4);
+  assert.match(html, /href="https:\/\/open\.spotify\.com\/search\/Glassy%20Morning%20Ana%20Roxanne"/);
+  // No embed, no track id, no token: this is exactly what survives key death.
+  assert.ok(!html.includes('open.spotify.com/search/undefined'));
+
+  const order = [...html.matchAll(/class="export-title">([^<]+)</g)].map((m) => m[1]);
+  assert.deepEqual(order, view.exportTracks.map((t) => t.title));
+});
+
+test('the tracklist textarea carries the plain text the clipboard falls back to', async () => {
+  const html = await renderScore(doc);
+  const textarea = /<textarea id="export-text"[\s\S]*?<\/textarea>/.exec(html)[0];
+  assert.match(textarea, /hidden/, 'only revealed when the clipboard refuses');
+  assert.match(textarea, />Glassy Morning — Ana Roxanne<\/textarea>/);
+  assert.match(html, /class="visually-hidden" for="export-text"/, 'the textarea is labelled');
+});
+
+/** The track row is where the export reads its ids — the same DOM the share card reads. */
+test('every track row carries its Spotify id for the export to read', async () => {
+  const html = await renderScore(doc);
+  assert.match(html, /<li class="track indie" data-spotify-id="abc123">/);
+});
+
+/**
+ * The risk register's rule, as a test: this feature dies first, and when it
+ * does the page it lives on must be untouched.
+ */
+test('a score with no tracks renders no export section at all', async () => {
+  const empty = {
+    ...doc,
+    result: {
+      ...doc.result,
+      trackCount: 0,
+      phases: doc.result.phases.map((phase) => ({ ...phase, tracks: [] })),
+    },
+  };
+  const html = await renderScore(empty);
+  assert.ok(!html.includes('id="export"'), 'no tracks, nothing to export');
+  assert.match(html, /<h1>Rain Through Cedar<\/h1>/, 'and the score still renders');
+});
+
+test('the callback page is minimal, in voice, and carries only the public id', async () => {
+  const html = await render('callback', {
+    pageTitle: 'coming back',
+    isCallback: true,
+    spotifyClientId: 'client-abc',
+  });
+
+  assert.match(html, /id="callback" data-client-id="client-abc"/);
+  assert.match(html, /Coming back\./);
+  assert.match(html, /\/js\/callback\.js" type="module"/);
+  // It is a waiting room, not an error page: no failure copy, and no way to
+  // get stuck here without JavaScript.
+  assert.ok(!/error|failed|sorry/i.test(html.replace(/<script[\s\S]*?<\/script>/g, '')));
+  assert.match(html, /<noscript>[\s\S]*?href="\/"/);
+  // The export's own script has no business on this page.
+  assert.ok(!html.includes('/js/export.js'));
+  assert.ok(!html.includes('/js/share.js'));
 });
 
 test('the home page offers the photo drop as a second input mode', async () => {

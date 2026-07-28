@@ -1,0 +1,24 @@
+{{!--
+  The return hop. This page exists for about a second: callback.js verifies the
+  state, trades the code for a token against accounts.spotify.com, and replaces
+  the URL with the score the listener left from.
+
+  It has no error state on purpose. Every way this can fail — a refused
+  consent, the five-user wall, a dead handshake — leaves by the same door, back
+  to the score, where the tracklist is waiting. An error page here would be the
+  one thing tier 2 exists to prevent.
+
+  The server puts the public client id on this element and reads nothing else.
+  The authorization code in the query string is the browser's business.
+--}}
+<section class="callback" id="callback" data-client-id="{{spotifyClientId}}">
+  <p class="callback-eyebrow">spotify</p>
+  <h1>Coming back.</h1>
+  <p class="callback-note">
+    Trading a handshake for permission to write one private playlist. This takes
+    a second, and then you&rsquo;re back at the score.
+  </p>
+  <p class="callback-fallback">
+    <noscript>This last step needs JavaScript. <a href="/">Start again from the front page.</a></noscript>
+  </p>
+</section>

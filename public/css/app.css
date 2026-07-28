@@ -1391,6 +1391,16 @@ a:hover {
   cursor: default;
 }
 
+/* `display: inline-flex` above is an author declaration, and an author
+   declaration outranks the UA stylesheet's `[hidden] { display: none }` however
+   weak its selector — so setting `.hidden = true` on one of these does nothing
+   without this rule. Found in a browser, not in a unit test: the export button
+   stayed clickable after it had already made the playlist, and after the
+   five-user wall had made it pointless. Same trap as `.photo-field [hidden]`. */
+.button-quiet[hidden] {
+  display: none;
+}
+
 #action-status:not([hidden]) {
   display: block;
   margin-top: 16px;
@@ -1475,6 +1485,121 @@ a:hover {
   display: none;
 }
 
+/* --- The export: "make it yours" ------------------------------------------
+   Same rule-and-eyebrow construction as the share block above it — this is the
+   score leaving the page a third way, not a new kind of thing. It borrows
+   .share-eyebrow and .share-note deliberately.
+
+   Tier 2 (the list) is always in the DOM and is plain anchors, so it survives
+   a dead script and a dead API key alike. */
+
+.export {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--rule);
+}
+
+.export-note:not([hidden]),
+.export-done:not([hidden]) {
+  display: block;
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
+/* The one moment the export earns ink rather than grey: a playlist now exists
+   somewhere that did not before. */
+.export-done:not([hidden]) {
+  color: var(--ink-soft);
+}
+
+.export-fallback {
+  margin-top: 20px;
+}
+
+.export-fallback[hidden] {
+  display: none;
+}
+
+/* Only ever shown when the clipboard refused: the text is here, select it. */
+.export-text {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.8;
+  resize: vertical;
+}
+
+.export-text[hidden] {
+  display: none;
+}
+
+/* A typed index of the record, one line each. Numbered by counter so the
+   ordinal is chrome, never something a screen reader has to read twice. */
+.export-list {
+  counter-reset: export;
+  margin-top: 18px;
+  list-style: none;
+}
+
+.export-list li {
+  counter-increment: export;
+  border-top: 1px solid var(--rule);
+}
+
+.export-list li:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.export-list a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-height: 44px; /* a tap target on the counter phone */
+  padding: 11px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.export-list a::before {
+  content: counter(export, decimal-leading-zero);
+  flex: 0 0 auto;
+  width: 28px;
+  color: var(--ink-2);
+}
+
+/* The title carries the underline, so "this row is a link" survives greyscale
+   and the row does not turn into a wall of rules. */
+.export-title {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: var(--accent-text);
+}
+
+.export-artist {
+  color: var(--ink-2);
+}
+
+.export-list a:hover .export-title {
+  color: var(--link);
+  text-decoration-color: var(--link);
+}
+
 .closer {
   margin-top: 64px;
 }
@@ -1506,6 +1631,63 @@ a:hover {
 
 .notice .prose {
   margin-bottom: 36px;
+}
+
+/* =========================================================================
+   CALLBACK
+   The OAuth return hop — visible for about a second, and never an error page.
+   ========================================================================= */
+
+.callback {
+  margin-top: 8px;
+  max-width: 44ch;
+}
+
+.callback-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+
+.callback h1 {
+  font-size: clamp(1.9rem, 1.3rem + 2.4vw, 2.5rem);
+  margin-bottom: 20px;
+}
+
+.callback-note,
+.callback-fallback {
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.callback-fallback {
+  margin-top: 20px;
+}
+
+/* =========================================================================
+   Utilities
+   ========================================================================= */
+
+/* Present to the accessibility tree, absent from the page. Used for the
+   label on the export's plain-text tracklist, which is only ever revealed
+   when the clipboard API refuses. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* =========================================================================

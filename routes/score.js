@@ -129,7 +129,23 @@ router.get('/score/:slug', async (req, res) => {
   // Scores are immutable — a remix mints a new slug — so this can sit at the
   // edge forever, which is what keeps share traffic off a free Atlas tier.
   res.set('Cache-Control', 'public, s-maxage=31536000, immutable');
-  return res.render('score', { score, pageTitle: score.title, isScore: true });
+  return res.render('score', {
+    score,
+    pageTitle: score.title,
+    isScore: true,
+    /**
+     * The export's public identifier. A client id is not a secret — PKCE
+     * exists precisely so a browser can hold one — and CLIENT_SECRET stays
+     * server-side where it does search.
+     *
+     * Absent (unset, or the key finally died) is a first-class state, not an
+     * error: the template renders the tier-2 list directly and no script ever
+     * looks at Spotify. Note that this value is baked into HTML the edge keeps
+     * for a year, so a *changed* id reaches old pages slowly — and an id that
+     * has stopped working simply fails into the same tier-2 list.
+     */
+    spotifyClientId: process.env.CLIENT_ID || '',
+  });
 });
 
 export default router;

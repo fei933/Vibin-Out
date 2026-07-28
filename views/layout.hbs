@@ -86,5 +86,12 @@
     {{#if isScore}}<script src="/js/drydown.js" defer></script>{{/if}}
     {{#if isScore}}<script src="/js/vendor/qrcode.js" defer></script>{{/if}}
     {{#if isScore}}<script src="/js/share.js" defer></script>{{/if}}
+    {{!-- The export is an ES module (it imports the pure PKCE/decision core,
+          which `node --test` imports too — one implementation, two runtimes).
+          Modules defer by default, and a module that throws takes nothing else
+          with it, which is exactly the isolation the score page needs from a
+          feature designed to die first. --}}
+    {{#if isScore}}<script src="/js/export.js" type="module"></script>{{/if}}
+    {{#if isCallback}}<script src="/js/callback.js" type="module"></script>{{/if}}
   </body>
 </html>

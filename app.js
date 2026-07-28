@@ -1,7 +1,9 @@
 /**
  * Vibin' Out v2 — the Drydown Score.
  *
- * Three routes, no auth, no sessions. Nothing here connects to Mongo or
+ * Four routes, no auth, no sessions — /callback included: it renders a page
+ * and nothing else, because the Spotify export's token exchange happens in the
+ * browser and the server never sees a token. Nothing here connects to Mongo or
  * Spotify at import time: on Vercel this module is evaluated on every cold
  * start, and the home page must render even when every dependency is down.
  */
@@ -10,6 +12,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import callback from './routes/callback.js';
 import home from './routes/index.js';
 import score from './routes/score.js';
 
@@ -32,6 +35,7 @@ app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
 
 app.use('/', home);
 app.use('/', score);
+app.use('/', callback);
 
 app.use((req, res) => {
   res.status(404).render('error', {
