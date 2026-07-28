@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MockLanguageModelV3 } from 'ai/test';
+import { z } from 'zod';
 import { ANTHROPIC_MODEL, callModel, GATEWAY_MODEL, selectModel, selectProvider } from '../lib/llm.js';
 import { llmScoreSchema } from '../lib/schema.js';
 import { buildScorePrompt, buildSystemPrompt } from '../lib/prompt.js';
@@ -74,6 +75,74 @@ test('callModel drives the real AI SDK path and returns a parsed score', async (
   });
 
   assert.deepEqual(output, payload);
+});
+
+/**
+ * A capturing mock: the AI SDK hands `doGenerate` the converted prompt, so
+ * this is where we find out what the provider would actually be sent.
+ */
+function capturingModel(text = '{"ok":true}') {
+  const captured = {};
+  const model = new MockLanguageModelV3({
+    doGenerate: async (options) => {
+      captured.prompt = options.prompt;
+      return {
+        content: [{ type: 'text', text }],
+        finishReason: { unified: 'stop', raw: undefined },
+        usage: {
+          inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
+          outputTokens: { total: 1, text: 1, reasoning: undefined },
+        },
+        warnings: [],
+      };
+    },
+  });
+  return { model, captured };
+}
+
+const OK_SCHEMA = z.object({ ok: z.boolean() });
+const PHOTO = `data:image/jpeg;base64,${Buffer.alloc(24, 3).toString('base64')}`;
+
+/**
+ * The multimodal contract. `image` is handed in as a data URL string; the SDK
+ * converts it to the language-model spec's file part and detects the media
+ * type from the URL itself, which is why we pass no `mediaType`. Asserting on
+ * the converted prompt catches both a wrong part shape and a silently dropped
+ * image — neither of which any text-level assertion would see.
+ */
+test('callModel sends an image part, before the text, when a photo is present', async () => {
+  const { model, captured } = capturingModel();
+
+  await callModel({ model, system: 'sys', prompt: 'read the room', schema: OK_SCHEMA, image: PHOTO });
+
+  const user = captured.prompt.find((message) => message.role === 'user');
+  assert.equal(user.content.length, 2);
+  // Asserted field by field: the SDK also sets `filename`/`providerOptions` to
+  // undefined, which is not part of the contract we depend on.
+  assert.equal(user.content[0].type, 'file', 'the v3 spec calls an image part a file part');
+  assert.equal(user.content[0].mediaType, 'image/jpeg', 'detected from the data URL');
+  assert.equal(user.content[0].data, PHOTO.slice('data:image/jpeg;base64,'.length));
+  assert.equal(user.content[1].type, 'text');
+  assert.equal(user.content[1].text, 'read the room');
+  assert.equal(
+    captured.prompt.find((message) => message.role === 'system').content,
+    'sys',
+    'the system prompt still travels separately',
+  );
+});
+
+test('callModel without a photo sends one plain text part — the unchanged path', async () => {
+  const { model, captured } = capturingModel();
+
+  await callModel({ model, system: 'sys', prompt: 'cedar smoke', schema: OK_SCHEMA });
+
+  const user = captured.prompt.find((message) => message.role === 'user');
+  assert.deepEqual(user.content, [{ type: 'text', text: 'cedar smoke' }]);
+  assert.equal(
+    JSON.stringify(captured.prompt).includes('"file"'),
+    false,
+    'a text-only score never carries a file part',
+  );
 });
 
 test('callModel surfaces a schema violation as a thrown error the pipeline can retry', async () => {

@@ -1,3 +1,27 @@
+{{!--
+  The halo: the resolved records' own covers, turning slowly. This is the only
+  colour on the page by design (.impeccable.md §3), which is exactly why it is
+  absent rather than approximated when there is no artwork — old scores,
+  art-less releases, the key-death degraded mode all render an empty array and
+  the page simply starts at its title. Decorative and inert: aria-hidden, no
+  pointer events, fixed height so late covers shift nothing.
+--}}
+{{#if score.artwork.length}}
+  <div class="halo" aria-hidden="true" style="--n: {{score.artwork.length}}">
+    <div class="halo-ring">
+      {{#each score.artwork}}
+        <div class="halo-tile" style="--i: {{@index}}">
+          {{! Not lazy: the halo is the first thing on the page, so a lazy cover
+              is a cover that pops in while someone is already looking at it.
+              The fixed-height container is what prevents layout shift, not the
+              load timing. }}
+          <img src="{{this}}" alt="" width="104" height="104" decoding="async" />
+        </div>
+      {{/each}}
+    </div>
+  </div>
+{{/if}}
+
 <article id="score" data-slug="{{score.slug}}">
   <header class="score-head">
     <h1>{{score.title}}</h1>
@@ -12,10 +36,11 @@
   </header>
 
   {{! Arc bar: widths come from the phase weights, precomputed as percentages.
-      The share is stated in words and figures as well as width and colour. }}
+      The share is stated in words and figures as well as width and tone. The
+      data-* pair is what the share card reads to redraw the arc on canvas. }}
   <ol class="arc" aria-label="The scent's evolution across the playlist">
     {{#each score.arc}}
-      <li class="arc-segment arc-{{name}}" style="width: {{pct}}%">
+      <li class="arc-segment arc-{{name}}" data-name="{{name}}" data-pct="{{pct}}" style="width: {{pct}}%">
         <span class="arc-swatch" aria-hidden="true"></span>
         <span class="arc-label"><span class="arc-name">{{name}}</span><span class="arc-pct">{{pct}}%</span></span>
       </li>
@@ -42,9 +67,12 @@
 
       <ol class="tracks">
         {{#each tracks}}
-          <li class="track{{#if indie}} indie{{/if}}">
+          {{! The id is on the row, not only inside the embed URL, so the export
+              can read the tracklist off the page the way the share card does —
+              one source, no second payload to disagree with. }}
+          <li class="track{{#if indie}} indie{{/if}}" data-spotify-id="{{spotifyId}}">
             <div class="track-head">
-              <p class="track-name">{{title}}{{#if indie}}<span class="indie-find">indie find</span>{{/if}}</p>
+              <p class="track-name"><span class="track-title">{{title}}</span>{{#if indie}}<span class="indie-find">indie find</span>{{/if}}</p>
               <p class="track-artist">{{artist}}</p>
               <p class="why">{{why}}</p>
             </div>
@@ -70,6 +98,103 @@
       <button type="button" id="remix" data-slug="{{score.slug}}" class="button-quiet">Remix</button>
     </div>
     <p id="action-status" hidden aria-live="polite"></p>
+
+    {{!--
+      The share kit. A score is an artifact, not a session: it has an address,
+      a code you can tape next to the candle, and a card that carries the
+      reasoning into a message thread. Both are made in the browser — no API,
+      no tracking, nothing leaves the page. The plate stays hidden until the
+      encoder has actually drawn something; an empty frame reads as broken.
+    --}}
+    <section class="share" id="share" aria-labelledby="share-heading">
+      <figure class="qr-plate" id="qr-plate" hidden>
+        <canvas id="qr-canvas"></canvas>
+        <figcaption>scan to open</figcaption>
+      </figure>
+      <div class="share-copy">
+        <p class="share-eyebrow" id="share-heading">Take it with you</p>
+        <p class="share-note">
+          This score keeps its address. Point a phone at the code, or save the card
+          and drop it wherever you were going to describe this out loud.
+        </p>
+        <div class="action-row">
+          <button type="button" id="save-card" class="button-quiet">Save as card</button>
+        </div>
+      </div>
+    </section>
+
+    {{!--
+      "Make this playlist yours" — the export, in two tiers (design doc v2.1 §4).
+
+      Tier 1 is the button: Authorization Code + PKCE in the browser, scope
+      playlist-modify-private, token never seen by this server.
+
+      Tier 2 is everything below it, and it is rendered ALWAYS — for everyone
+      outside Spotify's five-user dev-mode allowlist, for a declined consent,
+      and for the day the key dies. The links are real anchors that need no
+      key, no token and no script, so this block is also the product's
+      degraded mode (TODOS #2) sitting on the page in advance.
+
+      With no client id there is nothing to authorize, so the button is not
+      rendered at all and the list IS the feature.
+    --}}
+    {{#if score.exportTracks.length}}
+      <section class="export" id="export" data-slug="{{score.slug}}" data-client-id="{{spotifyClientId}}" aria-labelledby="export-heading">
+        <p class="share-eyebrow" id="export-heading">Make it yours</p>
+        {{! When a structural wall turns up — the five-user cap, no https — the
+            button goes and export.js swaps this lede for the one the keyless
+            page already ships with, so the paragraph never keeps offering
+            something that has just stopped being on offer. One string, stored
+            once, used from either side. }}
+        <p class="share-note" id="export-lede" data-tier2="The records, in order. Each one opens in Spotify; the whole list copies in a tap.">
+          {{#if spotifyClientId}}
+            Put this in your own Spotify as a private playlist &mdash; the title, the
+            reading, the records in order. Or just take the list.
+          {{else}}
+            The records, in order. Each one opens in Spotify; the whole list copies
+            in a tap.
+          {{/if}}
+        </p>
+
+        {{#if spotifyClientId}}
+          <div class="action-row">
+            <button type="button" id="export-start" class="button-quiet">Make this playlist yours</button>
+          </div>
+        {{/if}}
+
+        <p id="export-note" class="export-note" hidden role="status"></p>
+
+        {{! The success state. Hidden until a playlist actually exists. }}
+        <p id="export-done" class="export-done" hidden>
+          It&rsquo;s in your library, private. <a href="https://open.spotify.com" rel="noopener noreferrer" target="_blank">Open it in Spotify</a>
+        </p>
+
+        <div id="export-fallback" class="export-fallback"{{#if spotifyClientId}} hidden{{/if}}>
+          <div class="action-row">
+            <button type="button" id="export-copy" class="button-quiet">Copy the list</button>
+          </div>
+          {{! Its own live region, below the button it answers. #export-note
+              above introduces the list; this one reports on the clipboard, and
+              putting them in one region would make each interrupt the other. }}
+          <p id="export-copy-note" class="export-note" hidden role="status"></p>
+          {{! Server-rendered plain text: the clipboard is the fast path, and
+              selecting this textarea is the floor underneath it. }}
+          <label class="visually-hidden" for="export-text">The tracklist as plain text</label>
+          <textarea id="export-text" class="export-text" readonly rows="8" hidden>{{score.tracklist}}</textarea>
+          <ol class="export-list">
+            {{#each score.exportTracks}}
+              <li>
+                <a href="{{searchUrl}}" rel="noopener noreferrer" target="_blank">
+                  <span class="export-title">{{title}}</span>
+                  <span class="export-artist">{{artist}}</span>
+                </a>
+              </li>
+            {{/each}}
+          </ol>
+        </div>
+      </section>
+    {{/if}}
+
     <p class="closer"><a href="/">Keep the room going.</a></p>
   </footer>
 </article>

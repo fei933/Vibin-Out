@@ -1,13 +1,21 @@
 /* ===========================================================================
-   vibin' out — "liner notes from an apothecary"
-   The visual system locked in .impeccable.md. Ink on paper, three faces with
-   three fixed roles, one signature motion (the drydown scroll).
+   vibin' out — "gallery in morning fog"  (v2.1)
+
+   The visual system locked in .impeccable.md. Near-white (or near-black) room,
+   hairline rules, three faces with three fixed roles. Colour belongs to the
+   music: album artwork in the halo carousel is the only saturated thing on any
+   page — every piece of chrome here is a tinted neutral.
 
    Rules encoded here:
+   - TWO themes, both first-class. Every colour a component touches is a
+     semantic custom property; the raw hexes appear exactly once, in the
+     palette block, and nowhere else in this file.
    - No pure black, no pure white, no shadows, no cards-in-cards, no gradients
-     outside the arc.
-   - Every text colour below is annotated with its measured contrast ratio on
-     paper (#F6F1E7). AA (4.5:1) is the floor for body text.
+     outside the arc's tonal ramp.
+   - Two motions only: the drydown scroll and the halo's rotation. Everything
+     else is a 150ms ease-out on a pill or a button.
+   - AA (4.5:1) is the floor for text IN BOTH THEMES. Measured ratios are
+     annotated beside every text token below.
    =========================================================================== */
 
 /* --- Fonts (self-hosted latin subsets, OFL) -------------------------------- */
@@ -52,43 +60,108 @@
   font-display: swap;
 }
 
-/* --- Tokens --------------------------------------------------------------- */
+/* ===========================================================================
+   TOKENS
+   =========================================================================== */
 
 :root {
-  /* Surfaces */
-  --paper: #f6f1e7;
-  --paper-raised: #fbf8f1; /* the input card — a paler label stock, not a "card" */
-  --rule: #ded4c1;
-  --rule-strong: #c7ba9f;
+  /* --- Raw palette. The only hex values in this file. -----------------------
+     Nothing below this block should ever reference one of these directly;
+     components speak in semantics (--bg, --ink, --link…) so the theme rules
+     have exactly one place to switch. */
 
-  /* Ink (contrast on --paper) */
-  --ink: #211d17; /* 14.9:1 */
-  --ink-soft: #43392d; /* 10.0:1 */
-  --ink-muted: #6b6154; /*  5.4:1 */
+  /* mist (light) */
+  --mist-bg: #fafaf7;
+  --mist-surface: #f2f2ee;
+  --mist-ink: #1c1c1a;
+  --mist-ink-soft: #3a3a36;
+  --mist-ink-2: #6b6b64;
+  --mist-rule: #e3e3dd;
+  --mist-rule-strong: #cfcfc8;
+  --mist-link: #4a5250;
+  --mist-placeholder: #6f6f67;
+  /* phase tones, graphic use */
+  --mist-vapor: #a8ada6;
+  --mist-stone: #70756e;
+  --mist-char: #3a3e38;
+  /* phase tones, text-safe twins (same tonal line, darkened until they clear
+     AA on BOTH --bg and --surface; monotonically darkening, so every value the
+     drydown interpolates between two stops is itself AA-safe) */
+  --mist-vapor-text: #676c65; /* 5.14:1 on bg · 4.79:1 on surface */
+  --mist-stone-text: #565b54; /* 6.65:1 · 6.20:1 */
+  --mist-char-text: #3a3e38; /* 10.43:1 · 9.71:1 */
 
-  /* Phase accents — GRAPHIC use only. Citrine on paper is 2.0:1 and can never
-     carry text; terracotta is 4.3:1 and misses AA for body copy by a hair. */
-  --citrine: #d9a441;
-  --terracotta: #b8552f;
-  --resin: #4a3b2a;
-  --resin-deep: #2f251a;
+  /* slate (dark) — warm grey editorial, never #121212 */
+  --slate-bg: #161614;
+  --slate-surface: #1e1e1c;
+  --slate-ink: #e6e6e1;
+  --slate-ink-soft: #c8c8c2;
+  --slate-ink-2: #9a9a92;
+  --slate-rule: #2a2a27;
+  --slate-rule-strong: #3e3e3a;
+  --slate-link: #a9b3ae;
+  --slate-placeholder: #8e8e86;
+  /* inverted: the scent emerges from the dark rather than settling into it */
+  --slate-vapor: #6e736c;
+  --slate-stone: #9aa097;
+  --slate-char: #d2d6ce;
+  --slate-vapor-text: #868b84; /* 5.21:1 on bg · 4.80:1 on surface */
+  --slate-stone-text: #9aa097; /* 6.77:1 · 6.24:1 */
+  --slate-char-text: #d2d6ce; /* 12.30:1 · 11.33:1 */
 
-  /* Phase accents — TEXT-SAFE ramp. Same hues, darkened until they clear AA.
-     Deliberate deviation from the raw palette; AA is the standing bar. */
-  --citrine-text: #8a6520; /* 4.7:1 */
-  --terracotta-text: #a0481f; /* 5.4:1 */
-  /* Resin proper is so close to ink that a base-phase eyebrow stops reading as
-     an accent at all; this is the same brown, opened up a stop. */
-  --resin-text: #6b4e2e; /* 6.8:1 */
+  /* The QR plate is a printed label, not chrome: it is the same dark-ink-on-
+     light-stock in both themes, because a scanner does not have a theme.
+     15.21:1 — far above the ~3:1 a camera needs. */
+  --qr-plate: #f2f2ee;
+  --qr-ink: #1c1c1a;
 
-  /* Interactive */
-  --vetiver: #3f5142; /* 7.6:1 */
+  /* --- Semantics: mist is the default; the theme rules below re-point them. */
+  color-scheme: light;
 
-  /* The drydown: set by public/js/drydown.js on the score page, and used by
-     the chrome that is not tied to one phase (the wordmark's apostrophe, link
-     underlines, the arc's active marker). Defaults to the opening note. */
-  --accent: var(--citrine);
-  --accent-text: var(--citrine-text);
+  --bg: var(--mist-bg);
+  --surface: var(--mist-surface);
+  --ink: var(--mist-ink); /* 16.32:1 */
+  --ink-soft: var(--mist-ink-soft); /* 10.92:1 */
+  --ink-2: var(--mist-ink-2); /*  5.13:1 on bg · 4.78:1 on surface */
+  --rule: var(--mist-rule);
+  --rule-strong: var(--mist-rule-strong);
+  --link: var(--mist-link); /*  7.68:1 · 7.16:1 */
+  --placeholder: var(--mist-placeholder); /*  4.51:1 on surface */
+
+  --vapor: var(--mist-vapor);
+  --stone: var(--mist-stone);
+  --char: var(--mist-char);
+  --vapor-text: var(--mist-vapor-text);
+  --stone-text: var(--mist-stone-text);
+  --char-text: var(--mist-char-text);
+
+  /* The theme toggle's active mark. Carried by weight + underline as well as
+     colour — the toggle must read in greyscale like everything else. */
+  --opt-light-fg: var(--ink);
+  --opt-light-weight: 500;
+  --opt-light-line: var(--link);
+  --opt-dark-fg: var(--ink-2);
+  --opt-dark-weight: 400;
+  --opt-dark-line: transparent;
+
+  /* --- The drydown. Set by public/js/drydown.js on the score page; used by
+     the chrome that belongs to no single phase — the arc's baseline (graphic)
+     and link underlines (text). Defaults to the opening note so the page is
+     correct before — and without — script.
+
+     --accent      raw tone, graphic only
+     --accent-text the AA-safe twin, for anything a reader has to read */
+  --accent: var(--vapor);
+  --accent-text: var(--vapor-text);
+
+  /* The ramps, published as tokens so drydown.js can read them off computed
+     style instead of hardcoding a second copy of the palette in JS. */
+  --ramp-graphic-0: var(--vapor);
+  --ramp-graphic-1: var(--stone);
+  --ramp-graphic-2: var(--char);
+  --ramp-text-0: var(--vapor-text);
+  --ramp-text-1: var(--stone-text);
+  --ramp-text-2: var(--char-text);
 
   /* Rhythm — 8px unit */
   --column: 640px;
@@ -103,6 +176,71 @@
   --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
+/* An explicit choice, written by the inline head script from localStorage.
+   Only the semantic layer moves — no hex is repeated. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: var(--slate-bg);
+  --surface: var(--slate-surface);
+  --ink: var(--slate-ink); /* 14.47:1 */
+  --ink-soft: var(--slate-ink-soft); /* 10.78:1 */
+  --ink-2: var(--slate-ink-2); /*  6.39:1 on bg · 5.89:1 on surface */
+  --rule: var(--slate-rule);
+  --rule-strong: var(--slate-rule-strong);
+  --link: var(--slate-link); /*  8.41:1 · 7.75:1 */
+  --placeholder: var(--slate-placeholder); /*  5.06:1 on surface */
+
+  --vapor: var(--slate-vapor);
+  --stone: var(--slate-stone);
+  --char: var(--slate-char);
+  --vapor-text: var(--slate-vapor-text);
+  --stone-text: var(--slate-stone-text);
+  --char-text: var(--slate-char-text);
+
+  --opt-light-fg: var(--ink-2);
+  --opt-light-weight: 400;
+  --opt-light-line: transparent;
+  --opt-dark-fg: var(--ink);
+  --opt-dark-weight: 500;
+  --opt-dark-line: var(--link);
+}
+
+/* No-script (and pre-hydration) default: follow the system. The inline head
+   script normally wins by writing data-theme before first paint; this rule is
+   what keeps the page honest when scripting is off. It sits after the explicit
+   rule and excludes only an explicit *light* choice, so all four combinations
+   of (system preference × stored choice) land correctly. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --bg: var(--slate-bg);
+    --surface: var(--slate-surface);
+    --ink: var(--slate-ink);
+    --ink-soft: var(--slate-ink-soft);
+    --ink-2: var(--slate-ink-2);
+    --rule: var(--slate-rule);
+    --rule-strong: var(--slate-rule-strong);
+    --link: var(--slate-link);
+    --placeholder: var(--slate-placeholder);
+
+    --vapor: var(--slate-vapor);
+    --stone: var(--slate-stone);
+    --char: var(--slate-char);
+    --vapor-text: var(--slate-vapor-text);
+    --stone-text: var(--slate-stone-text);
+    --char-text: var(--slate-char-text);
+
+    --opt-light-fg: var(--ink-2);
+    --opt-light-weight: 400;
+    --opt-light-line: transparent;
+    --opt-dark-fg: var(--ink);
+    --opt-dark-weight: 500;
+    --opt-dark-line: var(--link);
+  }
+}
+
 /* --- Reset ---------------------------------------------------------------- */
 
 *,
@@ -113,6 +251,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  background: var(--bg);
 }
 
 body,
@@ -124,6 +263,7 @@ ol,
 ul,
 li,
 figure,
+figcaption,
 fieldset,
 legend {
   margin: 0;
@@ -141,19 +281,20 @@ fieldset {
 }
 
 img,
-iframe {
+iframe,
+canvas {
   max-width: 100%;
 }
 
 ::selection {
   background: var(--ink);
-  color: var(--paper);
+  color: var(--bg);
 }
 
 /* --- Page ----------------------------------------------------------------- */
 
 body {
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
   font-size: 18px;
@@ -161,25 +302,8 @@ body {
   font-variant-numeric: oldstyle-nums;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-}
-
-/* Paper grain. Fixed, unselectable, barely there — the difference between a
-   cream background and a sheet of paper. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.5;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.09'/%3E%3C/svg%3E");
-  background-size: 140px 140px;
-}
-
-body > * {
-  position: relative;
-  z-index: 1;
+  /* The room is meant to be quiet, not to fade in: no page-level transition,
+     so a theme flip is instantaneous rather than a two-second wash. */
 }
 
 .page-header,
@@ -189,6 +313,10 @@ main {
 }
 
 .page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding-block: 40px 0;
 }
 
@@ -200,7 +328,7 @@ main {
 .is-inner .page-header {
   padding-block: 32px 28px;
   border-bottom: 1px solid var(--rule);
-  margin-bottom: 48px;
+  margin-bottom: 40px;
 }
 
 main {
@@ -220,11 +348,13 @@ main {
   white-space: nowrap;
 }
 
-/* The single drop of colour in the mark — and on the score page it is the
-   thing that drydowns as you read. */
+/* The single accent in the mark. Sage-slate, and deliberately NOT on the
+   drydown ramp: the mark is the one thing on the page that must not change as
+   you read it, and vapour-on-mist is 2.2:1 — an apostrophe nobody can see
+   spells "vibin out". (WCAG exempts logotype from contrast; this clears AA
+   anyway, at 7.68:1 in mist and 8.41:1 in slate.) */
 .wordmark .drop {
-  color: var(--accent);
-  transition: color 400ms linear;
+  color: var(--link);
 }
 
 .is-home .wordmark {
@@ -239,7 +369,59 @@ a.wordmark-link {
 }
 
 a.wordmark-link:hover .wordmark {
-  color: var(--vetiver);
+  color: var(--link);
+}
+
+/* --- Theme toggle --------------------------------------------------------- */
+
+/* Typographic, in-voice, no icon library: the two rooms are named and the one
+   you are standing in is set in ink, heavier, and underlined. Colour is never
+   the only signal. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 6px;
+  margin-right: -6px;
+  border: 0;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.theme-opt {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.35em;
+  transition:
+    color 150ms var(--ease),
+    text-decoration-color 150ms var(--ease);
+}
+
+.theme-opt[data-theme-opt='light'] {
+  color: var(--opt-light-fg);
+  font-weight: var(--opt-light-weight);
+  text-decoration-color: var(--opt-light-line);
+}
+
+.theme-opt[data-theme-opt='dark'] {
+  color: var(--opt-dark-fg);
+  font-weight: var(--opt-dark-weight);
+  text-decoration-color: var(--opt-dark-line);
+}
+
+.theme-slash {
+  color: var(--ink-2);
+}
+
+.theme-toggle:hover .theme-opt {
+  color: var(--ink);
 }
 
 /* --- Type roles ----------------------------------------------------------- */
@@ -268,7 +450,7 @@ h2 {
   text-wrap: pretty;
 }
 
-/* Micro-labels: typed, stamped, apothecary label stock. */
+/* Micro-labels: typed, not set. */
 .eyebrow {
   font-family: var(--mono);
   font-size: 11px;
@@ -276,7 +458,7 @@ h2 {
   line-height: 1.4;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--ink-2);
 }
 
 .mono {
@@ -290,12 +472,12 @@ h2 {
 /* --- Links ---------------------------------------------------------------- */
 
 a {
-  color: var(--vetiver);
+  color: var(--link);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.22em;
   /* The underline drydowns with the page, but off the AA-safe ramp: a 2:1
-     citrine hairline would be a decoration nobody can see. */
+     vapour hairline would be a decoration nobody can see. */
   text-decoration-color: var(--accent-text);
   transition: color 150ms var(--ease), text-decoration-color 400ms linear;
 }
@@ -306,7 +488,7 @@ a:hover {
 }
 
 :where(a, button, input, textarea, summary):focus-visible {
-  outline: 2px solid var(--vetiver);
+  outline: 2px solid var(--link);
   outline-offset: 3px;
   border-radius: 1px;
 }
@@ -324,14 +506,11 @@ a:hover {
   max-width: 42ch;
 }
 
-/* The input card: a label pasted on the sheet. The double hairline is the
-   apothecary frame — the one decorative device on the page. */
+/* The input card: a raised plate, framed by a single hairline. No shadow —
+   in a fog-lit room nothing casts one. */
 .card {
-  background: var(--paper-raised);
-  border: 1px solid var(--rule-strong);
-  box-shadow:
-    inset 0 0 0 4px var(--paper-raised),
-    inset 0 0 0 5px var(--rule);
+  background: var(--surface);
+  border: 1px solid var(--rule);
   padding: 48px;
   border-radius: 2px;
 }
@@ -349,7 +528,7 @@ a:hover {
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   margin-bottom: 10px;
 }
 
@@ -373,19 +552,19 @@ a:hover {
 }
 
 #scent::placeholder {
-  color: #8a8072; /* 4.5:1 on the card — placeholders still have to be read */
+  color: var(--placeholder); /* placeholders still have to be read */
   font-style: italic;
 }
 
 #scent:focus {
   outline: none;
-  border-bottom-color: var(--vetiver);
+  border-bottom-color: var(--link);
   border-bottom-width: 2px;
   padding-bottom: 11px;
 }
 
 #scent:focus-visible {
-  outline: 2px solid var(--vetiver);
+  outline: 2px solid var(--link);
   outline-offset: 6px;
 }
 
@@ -395,8 +574,159 @@ a:hover {
   font-size: 15px;
   font-style: italic;
   line-height: 1.5;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   margin-top: 10px;
+}
+
+/* --- The optional photo drop ----------------------------------------------
+   Second input mode, deliberately quieter than the textarea above it: a
+   hairline DASHED frame (the only dashed rule in the system, so it reads as
+   "optional, droppable" without a fill, an icon or a colour), and no
+   background of its own — a card inside a card is what principle 6 forbids. */
+.photo-field {
+  margin-top: 24px;
+}
+
+/* An author `display` declaration outranks the UA stylesheet's
+   `[hidden] { display: none }` no matter how weak its selector, so the parts
+   this field toggles have to opt back out explicitly — without this the empty
+   preview plate renders on every page load. */
+.photo-field [hidden] {
+  display: none;
+}
+
+/* Visually hidden but still focusable — the label does the clicking, the input
+   does the keyboard. `display: none` would take it out of the tab order. */
+.photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.photo-drop {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 14px 16px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 2px;
+  cursor: pointer;
+  transition:
+    border-color 150ms var(--ease),
+    color 150ms var(--ease);
+}
+
+.photo-line {
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.photo-sub {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.photo-drop:hover {
+  border-color: var(--ink-soft);
+}
+
+/* Dragging over: the frame closes to a solid line. A shape change, not a tint,
+   so it survives greyscale and colour-blind vision. */
+.photo-drop.is-over {
+  border-style: solid;
+  border-color: var(--link);
+}
+
+.photo-input:focus-visible + .photo-drop {
+  outline: 2px solid var(--link);
+  outline-offset: 3px;
+}
+
+.photo-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+}
+
+.photo-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: var(--rule);
+}
+
+/* While compressing there is no image yet — an <img> with no src would draw a
+   broken-file glyph. */
+.photo-thumb:not([src]) {
+  display: none;
+}
+
+.photo-meta {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.photo-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 150ms var(--ease);
+}
+
+.photo-remove:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.photo-remove:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+
+/* Same language as the submit-error block below: a heavier rule and the ink
+   weight, never a red light — the palette has no alarm colour. */
+.photo-note:not([hidden]) {
+  display: block;
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: 52ch;
 }
 
 .pill-set {
@@ -449,12 +779,12 @@ a:hover {
 .pill:has(input:checked) {
   background: var(--ink);
   border-color: var(--ink);
-  color: var(--paper);
+  color: var(--bg);
   font-weight: 500;
 }
 
 .pill:has(input:focus-visible) {
-  outline: 2px solid var(--vetiver);
+  outline: 2px solid var(--link);
   outline-offset: 3px;
 }
 
@@ -467,7 +797,7 @@ a:hover {
   border: 1px solid var(--ink);
   border-radius: 2px;
   background: var(--ink);
-  color: var(--paper);
+  color: var(--bg);
   font-family: var(--sans);
   font-size: 18px;
   font-weight: 500;
@@ -475,17 +805,19 @@ a:hover {
   cursor: pointer;
   transition:
     background-color 150ms var(--ease),
-    color 150ms var(--ease);
+    color 150ms var(--ease),
+    border-color 150ms var(--ease);
 }
 
 .cta:hover:not(:disabled) {
-  background: var(--resin-deep);
-  border-color: var(--resin-deep);
+  background: var(--char);
+  border-color: var(--char);
+  color: var(--bg);
 }
 
 .cta:disabled {
   background: transparent;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   border-color: var(--rule-strong);
   cursor: default;
 }
@@ -498,19 +830,19 @@ a:hover {
 #examples {
   margin-top: 28px;
   font-size: 16.5px;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   line-height: 2.2;
 }
 
 .sep {
   padding: 0 7px;
-  color: var(--ink-muted); /* 5.4:1 — even punctuation has to be readable */
+  color: var(--ink-2); /* even punctuation has to be readable */
 }
 
 .example {
   font: inherit;
   font-size: 16.5px;
-  color: var(--vetiver);
+  color: var(--link);
   background: none;
   border: 0;
   padding: 10px 3px;
@@ -519,7 +851,7 @@ a:hover {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.22em;
-  text-decoration-color: var(--citrine-text);
+  text-decoration-color: var(--vapor-text);
   transition: color 150ms var(--ease);
 }
 
@@ -556,12 +888,12 @@ a:hover {
    for two minutes than a breathing paragraph, and the rotating status line
    below is sign enough that something is still happening. */
 #loading:not([hidden]) {
-  color: var(--ink-muted); /* 5.4:1 */
-  border-left-color: var(--citrine);
+  color: var(--ink-2);
+  border-left-color: var(--stone);
 }
 
 .loading-anchor {
-  color: var(--ink-soft); /* 10.0:1 — the one line that never changes */
+  color: var(--ink-soft); /* the one line that never changes */
   font-weight: 500;
 }
 
@@ -588,13 +920,88 @@ a:hover {
   display: none;
 }
 
+/* Failure is a deeper tone and a heavier rule, not a red light: the palette
+   has no alarm colour and is not getting one. The words carry the alarm. */
 #error:not([hidden]) {
-  color: var(--terracotta-text);
-  border-left-color: var(--terracotta);
+  color: var(--ink);
+  border-left-color: var(--ink);
+  font-weight: 500;
 }
 
 /* =========================================================================
-   SCORE
+   SCORE — the halo carousel
+   The only colour on the page. Chrome around it stays tonal.
+   ========================================================================= */
+
+.halo {
+  /* Radius > (tiles x width) / 2pi on purpose: the covers float apart rather
+     than forming a solid drum, which is what makes it read as a ring in space
+     instead of a wall. */
+  --tile: 104px;
+  --radius: 248px;
+  /* Fixed height: the ring is absolutely positioned inside it, so covers
+     arriving late (or never) cannot shift a single line of the page. */
+  height: 224px;
+  margin: 8px 0 40px;
+  /* The ring is wider than the column on purpose; it is clipped rather than
+     allowed to push the document sideways. */
+  overflow: hidden;
+  perspective: 720px;
+  perspective-origin: 50% 50%;
+  pointer-events: none; /* never intercepts a scroll or a tap */
+  /* Tiles turn edge-on at the sides; the fade hides the moment they flip
+     rather than letting them pop. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%);
+}
+
+.halo-ring {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  /* One continuous revolution, slower than anything else on the web. */
+  animation: halo-turn 78s linear infinite;
+  will-change: transform;
+}
+
+@keyframes halo-turn {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(-360deg);
+  }
+}
+
+.halo-tile {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--tile);
+  height: var(--tile);
+  margin: calc(var(--tile) / -2) 0 0 calc(var(--tile) / -2);
+  /* --i is the tile's index, --n the count: the ring divides itself. */
+  transform: rotateY(calc(var(--i) * (360deg / var(--n)))) translateZ(var(--radius));
+  /* Album art has words on it. Never show it mirrored. */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.halo-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 2px;
+  /* A hairline, so a cover that is nearly the page colour still has an edge.
+     No glow, no reflection. */
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+/* =========================================================================
+   SCORE — head, arc, phases, tracks
    ========================================================================= */
 
 .score-head {
@@ -621,16 +1028,33 @@ a:hover {
   font-family: var(--mono);
   font-size: 12.5px;
   letter-spacing: 0.05em;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   font-variant-numeric: lining-nums tabular-nums;
 }
 
 /* --- The arc -------------------------------------------------------------- */
 
 .arc {
+  position: relative;
   display: flex;
   align-items: flex-start;
   margin-top: 8px;
+}
+
+/* The vapour end of the ramp is deliberately faint (2.2:1 in mist — it is a
+   decoration, and the words beside it carry the meaning). This baseline, sat
+   directly under the bar, keeps the arc's full extent perceptible even where
+   the tone nearly vanishes into the page — and it is the drydown's one
+   graphic consumer, deepening as you read. */
+.arc::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  height: 1px;
+  background: var(--accent);
+  transition: background-color 400ms linear;
 }
 
 .arc-segment {
@@ -648,8 +1072,7 @@ a:hover {
 }
 
 /* The one place gradients live: each segment bleeds into the next, so the bar
-   reads as one continuous evaporation rather than three buckets. The blend is
-   short enough that each phase still owns most of its own colour. */
+   reads as one continuous settling rather than three buckets. */
 .arc-swatch::after {
   content: '';
   position: absolute;
@@ -659,18 +1082,18 @@ a:hover {
 }
 
 .arc-top {
-  --seg: var(--citrine);
-  --seg-next: var(--terracotta);
+  --seg: var(--vapor);
+  --seg-next: var(--stone);
 }
 
 .arc-heart {
-  --seg: var(--terracotta);
-  --seg-next: var(--resin);
+  --seg: var(--stone);
+  --seg-next: var(--char);
 }
 
 .arc-base {
-  --seg: var(--resin);
-  --seg-next: var(--resin-deep);
+  --seg: var(--char);
+  --seg-next: var(--char);
 }
 
 .arc-top .arc-swatch {
@@ -694,7 +1117,7 @@ a:hover {
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   transition: color 300ms linear;
 }
 
@@ -702,7 +1125,7 @@ a:hover {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.04em;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   font-variant-numeric: lining-nums tabular-nums;
 }
 
@@ -721,6 +1144,7 @@ a:hover {
   bottom: -5px;
   height: 2px;
   background: var(--ink);
+  z-index: 1;
 }
 
 .arc-segment[data-active] .arc-name {
@@ -731,7 +1155,7 @@ a:hover {
   margin-top: 20px;
   font-size: 16.5px;
   line-height: 1.6;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   max-width: 52ch;
   text-wrap: pretty;
 }
@@ -743,7 +1167,7 @@ a:hover {
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.6;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   max-width: 52ch;
 }
 
@@ -765,8 +1189,8 @@ a:hover {
   margin-bottom: 40px;
 }
 
-/* The colour-coded tab sitting on the rule: the phase's identity as a mark,
-   always paired with the word beneath it. */
+/* The tonal tab sitting on the rule: the phase's identity as a mark, always
+   paired with the word beneath it. */
 .phase-head::before {
   content: '';
   position: absolute;
@@ -778,18 +1202,18 @@ a:hover {
 }
 
 .phase-top {
-  --phase-color: var(--citrine);
-  --phase-text: var(--citrine-text);
+  --phase-color: var(--vapor);
+  --phase-text: var(--vapor-text);
 }
 
 .phase-heart {
-  --phase-color: var(--terracotta);
-  --phase-text: var(--terracotta-text);
+  --phase-color: var(--stone);
+  --phase-text: var(--stone-text);
 }
 
 .phase-base {
-  --phase-color: var(--resin);
-  --phase-text: var(--resin-text);
+  --phase-color: var(--char);
+  --phase-text: var(--char-text);
 }
 
 .phase-eyebrow {
@@ -813,7 +1237,7 @@ a:hover {
   font-style: italic;
   font-size: 17px;
   line-height: 1.5;
-  color: var(--ink-muted);
+  color: var(--ink-2);
   max-width: 44ch;
 }
 
@@ -865,7 +1289,7 @@ a:hover {
   display: inline-block;
   margin-left: 8px;
   padding: 1px 7px 2px;
-  border: 1px solid var(--vetiver);
+  border: 1px solid var(--link);
   border-radius: 2px;
   font-family: var(--mono);
   font-size: 10px;
@@ -873,7 +1297,7 @@ a:hover {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   line-height: 1.5;
-  color: var(--vetiver);
+  color: var(--link);
   vertical-align: 1.5px;
   white-space: nowrap;
 }
@@ -882,7 +1306,7 @@ a:hover {
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--ink-muted);
+  color: var(--ink-2);
 }
 
 /* The reasoning is the product: the justification is the darkest, most
@@ -891,7 +1315,9 @@ a:hover {
 .why {
   margin-top: 4px;
   padding-left: 14px;
-  border-left: 1px solid var(--rule);
+  /* The reasoning column carries the drydown too: its rule is the phase's own
+     tone, so the argument visibly deepens from top notes to base. */
+  border-left: 1px solid var(--phase-color);
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.6;
@@ -902,7 +1328,8 @@ a:hover {
 
 /* Spotify only ships a dark player. Rather than fight it, the embed is set
    like a plate in a book: indented to the liner note's own column so it reads
-   as an illustration of the note above it, never as the page's chrome. */
+   as an illustration of the note above it, never as the page's chrome. In
+   slate it simply belongs; in mist the indent is what makes it intentional. */
 .track-embed {
   grid-column: 2;
   margin-top: 14px;
@@ -918,7 +1345,7 @@ a:hover {
   border: 0;
 }
 
-/* --- Actions + closer ----------------------------------------------------- */
+/* --- Actions + share kit + closer ----------------------------------------- */
 
 .actions {
   margin-top: var(--phase-gap);
@@ -955,13 +1382,23 @@ a:hover {
 
 .button-quiet:hover:not(:disabled) {
   background: var(--ink);
-  color: var(--paper);
+  color: var(--bg);
 }
 
 .button-quiet:disabled {
-  color: var(--ink-muted);
+  color: var(--ink-2);
   border-color: var(--rule-strong);
   cursor: default;
+}
+
+/* `display: inline-flex` above is an author declaration, and an author
+   declaration outranks the UA stylesheet's `[hidden] { display: none }` however
+   weak its selector — so setting `.hidden = true` on one of these does nothing
+   without this rule. Found in a browser, not in a unit test: the export button
+   stayed clickable after it had already made the playlist, and after the
+   five-user wall had made it pointless. Same trap as `.photo-field [hidden]`. */
+.button-quiet[hidden] {
+  display: none;
 }
 
 #action-status:not([hidden]) {
@@ -970,7 +1407,197 @@ a:hover {
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.6;
-  color: var(--ink-muted);
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
+/* The score is an artifact, not a session: the block that lets it leave the
+   browser gets its own rule and its own breath. */
+.share {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.share-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.share-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+
+.share-note {
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  max-width: 36ch;
+  margin-bottom: 18px;
+  text-wrap: pretty;
+}
+
+/* A printed label pasted onto the page: the same stock in both themes,
+   because a phone camera does not have a theme. */
+.qr-plate {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px;
+  background: var(--qr-plate);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  line-height: 0;
+}
+
+/* share.js sizes the bitmap to an exact whole number of device pixels per
+   module and writes the matching CSS size, so the modules land on the pixel
+   grid; `pixelated` only guards the fractional-DPR case. Nothing here fixes a
+   width, because a width the encoder did not choose is a blurred QR. */
+.qr-plate canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.qr-plate figcaption {
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--qr-ink);
+}
+
+/* Until the encoder has run there is nothing to show — an empty plate would
+   read as a broken image. */
+.qr-plate[hidden] {
+  display: none;
+}
+
+/* --- The export: "make it yours" ------------------------------------------
+   Same rule-and-eyebrow construction as the share block above it — this is the
+   score leaving the page a third way, not a new kind of thing. It borrows
+   .share-eyebrow and .share-note deliberately.
+
+   Tier 2 (the list) is always in the DOM and is plain anchors, so it survives
+   a dead script and a dead API key alike. */
+
+.export {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--rule);
+}
+
+.export-note:not([hidden]),
+.export-done:not([hidden]) {
+  display: block;
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
+/* The one moment the export earns ink rather than grey: a playlist now exists
+   somewhere that did not before. */
+.export-done:not([hidden]) {
+  color: var(--ink-soft);
+}
+
+.export-fallback {
+  margin-top: 20px;
+}
+
+.export-fallback[hidden] {
+  display: none;
+}
+
+/* Only ever shown when the clipboard refused: the text is here, select it. */
+.export-text {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.8;
+  resize: vertical;
+}
+
+.export-text[hidden] {
+  display: none;
+}
+
+/* A typed index of the record, one line each. Numbered by counter so the
+   ordinal is chrome, never something a screen reader has to read twice. */
+.export-list {
+  counter-reset: export;
+  margin-top: 18px;
+  list-style: none;
+}
+
+.export-list li {
+  counter-increment: export;
+  border-top: 1px solid var(--rule);
+}
+
+.export-list li:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.export-list a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-height: 44px; /* a tap target on the counter phone */
+  padding: 11px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.export-list a::before {
+  content: counter(export, decimal-leading-zero);
+  flex: 0 0 auto;
+  width: 28px;
+  color: var(--ink-2);
+}
+
+/* The title carries the underline, so "this row is a link" survives greyscale
+   and the row does not turn into a wall of rules. */
+.export-title {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: var(--accent-text);
+}
+
+.export-artist {
+  color: var(--ink-2);
+}
+
+.export-list a:hover .export-title {
+  color: var(--link);
+  text-decoration-color: var(--link);
 }
 
 .closer {
@@ -1007,6 +1634,63 @@ a:hover {
 }
 
 /* =========================================================================
+   CALLBACK
+   The OAuth return hop — visible for about a second, and never an error page.
+   ========================================================================= */
+
+.callback {
+  margin-top: 8px;
+  max-width: 44ch;
+}
+
+.callback-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+
+.callback h1 {
+  font-size: clamp(1.9rem, 1.3rem + 2.4vw, 2.5rem);
+  margin-bottom: 20px;
+}
+
+.callback-note,
+.callback-fallback {
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.callback-fallback {
+  margin-top: 20px;
+}
+
+/* =========================================================================
+   Utilities
+   ========================================================================= */
+
+/* Present to the accessibility tree, absent from the page. Used for the
+   label on the export's plain-text tracklist, which is only ever revealed
+   when the clipboard API refuses. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =========================================================================
    Small screens
    ========================================================================= */
 
@@ -1022,9 +1706,6 @@ a:hover {
 
   .card {
     padding: 28px 22px;
-    box-shadow:
-      inset 0 0 0 3px var(--paper-raised),
-      inset 0 0 0 4px var(--rule);
   }
 
   #scent {
@@ -1063,6 +1744,14 @@ a:hover {
     display: none;
   }
 
+  .halo {
+    height: 168px;
+    margin-bottom: 32px;
+    perspective: 520px;
+    --tile: 84px;
+    --radius: 160px;
+  }
+
   .track {
     grid-template-columns: 30px 1fr;
   }
@@ -1080,10 +1769,16 @@ a:hover {
   .action-row .button-quiet {
     flex: 1 1 auto;
   }
+
+  /* The QR leads on a phone — it is the thing you hold up to another phone. */
+  .share {
+    flex-direction: column;
+    gap: 24px;
+  }
 }
 
 /* =========================================================================
-   Reduced motion — the drydown becomes a crossfade, everything else stops.
+   Reduced motion — the drydown becomes a crossfade, the halo stops turning.
    ========================================================================= */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1104,5 +1799,35 @@ a:hover {
      swap really is instant rather than merely invisible.) */
   .loading-step {
     transition: none;
+  }
+
+  /* The halo flattens into a static fanned row: the covers are still the only
+     colour on the page, they simply stop turning. */
+  .halo {
+    height: auto;
+    perspective: none;
+  }
+
+  .halo-ring {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: auto;
+    transform-style: flat;
+    animation: none !important;
+    will-change: auto;
+    /* The fan's outer covers are rotated, so their corners need room the flex
+       box would not otherwise give them. */
+    padding-block: 18px;
+  }
+
+  .halo-tile {
+    position: relative;
+    top: auto;
+    left: auto;
+    flex: 0 0 auto;
+    margin: 0 calc(var(--tile) / -3.2);
+    /* A shallow fan around the centre of the row. */
+    transform: rotate(calc((var(--i) - (var(--n) - 1) / 2) * 1.6deg));
   }
 }

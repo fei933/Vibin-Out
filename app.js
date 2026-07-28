@@ -1,7 +1,9 @@
 /**
  * Vibin' Out v2 — the Drydown Score.
  *
- * Three routes, no auth, no sessions. Nothing here connects to Mongo or
+ * Four routes, no auth, no sessions — /callback included: it renders a page
+ * and nothing else, because the Spotify export's token exchange happens in the
+ * browser and the server never sees a token. Nothing here connects to Mongo or
  * Spotify at import time: on Vercel this module is evaluated on every cold
  * start, and the home page must render even when every dependency is down.
  */
@@ -10,6 +12,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import callback from './routes/callback.js';
 import home from './routes/index.js';
 import score from './routes/score.js';
 
@@ -23,12 +26,16 @@ app.set('view engine', 'hbs');
 // Behind Vercel's proxy — required for correct client IPs in the rate limiter.
 app.set('trust proxy', 1);
 
-app.use(express.json({ limit: '16kb' }));
-app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+// No app-wide body parser. POST /api/score is the only route that reads a body,
+// and since v1.5 it needs a 4MB ceiling for a photo — mounting that globally
+// would hand every other path (including 404s) a 4MB buffer to fill. The
+// parsers live on the route instead, where the friendly `photo_too_large`
+// answer lives too. See routes/score.js.
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
 
 app.use('/', home);
 app.use('/', score);
+app.use('/', callback);
 
 app.use((req, res) => {
   res.status(404).render('error', {

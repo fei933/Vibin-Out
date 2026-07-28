@@ -77,7 +77,7 @@ async function checkEmbeds(tracks) {
 }
 
 /** Every mechanical criterion, evaluated against one finished score. */
-async function runChecks(fixture, result) {
+async function runChecks(fixture, result, events = []) {
   const allTracks = result.phases.flatMap((p) => p.tracks);
   const quota = quotaFor(fixture.duration);
   const bounds = runtimeBounds(fixture.duration);
@@ -170,6 +170,14 @@ async function runChecks(fixture, result) {
       modelCalls: result.modelCalls,
       backfilled: Boolean(result.backfilled),
     },
+    // Which path actually produced the records. With LB_RADIO unset this is
+    // always 'llm'; with it set, an 'llm' here on a deepcuts fixture means the
+    // provider fell back — check the events for the reason.
+    discovery: {
+      source: result.discoverySource ?? 'llm',
+      fallbackReason:
+        events.find((event) => event.type === 'lb_radio_fallback')?.reason ?? null,
+    },
   };
 }
 
@@ -224,13 +232,13 @@ async function runFixture(index, fixture) {
   }
   const persistMs = Date.now() - persistStart;
 
-  const checks = await runChecks(fixture, result);
+  const checks = await runChecks(fixture, result, events);
   const verdict = mechanicalVerdict(checks);
 
   process.stdout.write(
     `   ${verdict} — ${result.trackCount} tracks, ${checks.runtime.actualMinutes}min, ` +
       `${result.modelCalls} model call(s)${result.backfilled ? ' (backfilled)' : ''}, ` +
-      `${checks.indie.count} indie, ${(generateMs / 1000).toFixed(1)}s → /score/${slug}\n`,
+      `${checks.indie.count} indie, ${checks.discovery.source}, ${(generateMs / 1000).toFixed(1)}s → /score/${slug}\n`,
   );
 
   return {
@@ -276,7 +284,7 @@ function fixtureMarkdown(entry) {
   // Entries merged from an earlier run predate later checks; render them as
   // "not measured" rather than crashing the whole report.
   const missing = { pass: null, offenders: [], badged: [] };
-  const c = { duplicateTitles: missing, overLongTracks: missing, ...entry.checks };
+  const c = { duplicateTitles: missing, overLongTracks: missing, discovery: { source: 'llm' }, ...entry.checks };
   const mark = (pass) => (pass === null ? 'n/a' : pass ? 'PASS' : 'FAIL');
 
   const lines = [
@@ -330,6 +338,9 @@ function fixtureMarkdown(entry) {
     `| Model-call budget | ${mark(c.budget.pass)} | ${c.budget.modelCalls}/3${
       c.budget.backfilled ? ' (backfill used)' : ''
     } |`,
+    `| Discovery source | — | ${c.discovery?.source ?? 'llm'}${
+      c.discovery?.fallbackReason ? ` (fell back: ${c.discovery.fallbackReason})` : ''
+    } |`,
     `\n### Tracklist\n`,
   ];
 
@@ -350,14 +361,14 @@ function buildMarkdown(entries) {
 
   const summaryRows = entries.map((e) => {
     if (!e.ok) {
-      return `| ${e.index} | ${e.fixture.name} | ${e.fixture.duration}/${e.fixture.discovery} | ERROR | — | — | — | — | — |`;
+      return `| ${e.index} | ${e.fixture.name} | ${e.fixture.duration}/${e.fixture.discovery} | ERROR | — | — | — | — | — | — |`;
     }
     return (
       `| ${e.index} | ${e.fixture.name} | ${e.fixture.duration}/${e.fixture.discovery} | ${e.verdict} | ` +
       `${e.checks.trackCount.got}/${e.checks.trackCount.quota} | ${e.checks.runtime.actualMinutes}min | ` +
       `${e.checks.deadEmbeds.dead.length} | ${e.checks.indie.count} | ${e.checks.budget.modelCalls}${
         e.checks.budget.backfilled ? '+bf' : ''
-      } |`
+      } | ${e.checks.discovery?.source ?? 'llm'} |`
     );
   });
 
@@ -392,8 +403,8 @@ function buildMarkdown(entries) {
     ``,
     `## Summary`,
     ``,
-    `| # | Fixture | Pills | Mech. | Tracks | Runtime | Dead | Indie | Calls |`,
-    `|---|---|---|---|---|---|---|---|---|`,
+    `| # | Fixture | Pills | Mech. | Tracks | Runtime | Dead | Indie | Calls | Source |`,
+    `|---|---|---|---|---|---|---|---|---|---|`,
     ...summaryRows,
     ``,
     `### Discovery dial sanity`,

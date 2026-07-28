@@ -19,10 +19,50 @@
       name="input"
       rows="3"
       maxlength="{{maxLength}}"
-      required
+      {{!--
+        NOT `required`. Since v1.5 the rule is text OR photo OR both, and a
+        `required` textarea makes a photo-only score impossible: native
+        validation blocks the submit before the page's own handler — the only
+        code that knows a photo is attached — ever runs. The rule is enforced
+        in public/js/home.js and again in lib/validation.js.
+      --}}
       placeholder="bergamot, black tea, cedar &mdash; a quiet bookshop on a rainy day"
     ></textarea>
     <span class="hint">Fragrance notes, a candle label, coffee-bag tasting notes &mdash; any scent language works.</span>
+  </div>
+
+  {{!--
+    The second input mode, kept quiet on purpose: a hairline dashed frame, no
+    fill, no icon, and copy that offers rather than asks. It must never compete
+    with the textarea above it (.impeccable.md principle 6 — a textarea, an
+    optional photo drop, two pill rows, one button, nothing else).
+
+    The file input is visually hidden but still focusable, so the label is
+    clickable AND the control is reachable by keyboard; public/css/app.css
+    draws the focus ring on the zone via `#photo:focus-visible + .photo-drop`.
+  --}}
+  {{!--
+    Deliberately NOT `class="field"`: in this card a `.field` is a label above a
+    control, and `.field > label` sets uppercase mono 11px — which would capture
+    the drop zone's own <label> and render the offer as the loudest line in the
+    card. Here the label IS the control.
+  --}}
+  <div class="photo-field" id="photo-field">
+    <input type="file" id="photo" accept="image/*" class="photo-input" />
+    <label class="photo-drop" id="photo-drop" for="photo">
+      <span class="photo-line">or show us the space &mdash; drop a photo</span>
+      <span class="photo-sub">photos are read, never kept.</span>
+    </label>
+
+    <div class="photo-preview" id="photo-preview" hidden>
+      <img class="photo-thumb" id="photo-thumb" alt="" />
+      <span class="photo-meta mono" id="photo-meta"></span>
+      <button type="button" class="photo-remove" id="photo-remove" aria-label="Remove the photo">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+
+    <p class="photo-note" id="photo-note" hidden role="status"></p>
   </div>
 
   <fieldset class="pill-set">
@@ -55,7 +95,7 @@
 <p id="examples">
   <span class="ex-label">or try an example:</span>
   {{!-- kept on one line so no stray whitespace lands beside the separators --}}
-  <a href="/score/ember-under-hide-11zrpq" class="example">Smoky oud</a><span class="sep" aria-hidden="true">&middot;</span><a href="/score/crema-to-cream-wr3r05" class="example">Espresso beans</a><span class="sep" aria-hidden="true">&middot;</span><a href="/score/coastal-linen-drift-zfhgnc" class="example">Ocean soap</a>
+  <a href="/score/ember-and-hide-dq10b9" class="example">Smoky oud</a><span class="sep" aria-hidden="true">&middot;</span><a href="/score/cortado-hours-animoa" class="example">Espresso beans</a><span class="sep" aria-hidden="true">&middot;</span><a href="/score/salt-air-clean-line-u4giy2" class="example">Ocean soap</a>
 </p>
 
 {{!--

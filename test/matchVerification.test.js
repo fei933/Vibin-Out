@@ -15,6 +15,30 @@ test('normalizeName folds diacritics, punctuation, credits and release qualifier
   assert.equal(normalizeName('Simon & Garfunkel'), 'simon and garfunkel');
 });
 
+/**
+ * Regression: the credit-stripping rule treated a leading "with" as the start
+ * of a "feat." credit and deleted the whole title, so "With or Without You"
+ * normalised to "" and U2 could never be matched against itself. Found while
+ * threading album art through — a test fixture happened to be titled
+ * "With Art".
+ */
+test('a title that begins with a credit word survives normalisation', () => {
+  assert.equal(normalizeName('With or Without You'), 'with or without you');
+  assert.equal(normalizeName('With Art'), 'with art');
+  assert.equal(normalizeName('Without You'), 'without you');
+
+  assert.deepEqual(
+    verifyMatch(
+      { title: 'With or Without You', artist: 'U2' },
+      { title: 'With or Without You', artists: ['U2'] },
+    ),
+    { ok: true },
+  );
+
+  // A real trailing credit is still stripped.
+  assert.equal(normalizeName('Tea Leaf Dancers feat. Andreya Triana'), 'tea leaf dancers');
+});
+
 test('similarity is 1 for the same record dressed differently, low for different ones', () => {
   assert.equal(similarity('Holocene', 'Holocene - 2011 Remaster'), 1);
   assert.equal(similarity('Glassy Morning', 'Glassy Mornings'), 1); // one-character token drift

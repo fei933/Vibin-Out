@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ALBUM_ART_TARGET_WIDTH,
   ARTIST_INDIE_POPULARITY_THRESHOLD,
   createSpotifyResolver,
   INDIE_POPULARITY_THRESHOLD,
   isIndie,
   mapWithConcurrency,
   MAX_TRACK_DURATION_MS,
+  pickAlbumArt,
 } from '../lib/trackResolver.js';
 
 const ok = (body) => ({
@@ -23,11 +25,26 @@ const tooManyRequests = (retryAfter = '1') => ({
   json: async () => ({}),
 });
 
-function item({ id = 'id1', name, artists, popularity = 55, durationMs = 210_000 }) {
+/** Spotify's real shape: widest first, 640/300/64. */
+const defaultImages = [
+  { url: 'https://i.scdn.co/image/640', width: 640, height: 640 },
+  { url: 'https://i.scdn.co/image/300', width: 300, height: 300 },
+  { url: 'https://i.scdn.co/image/64', width: 64, height: 64 },
+];
+
+function item({
+  id = 'id1',
+  name,
+  artists,
+  popularity = 55,
+  durationMs = 210_000,
+  images = defaultImages,
+}) {
   return {
     id,
     name,
     artists: artists.map((a) => ({ id: `art-${a}`, name: a })),
+    album: images === null ? {} : { images },
     popularity,
     duration_ms: durationMs,
   };
@@ -101,6 +118,7 @@ test('resolve records the spotify id, popularity, duration and indie flag', asyn
     phaseIndex: 0,
     spotifyId: 'abc',
     artistId: 'art-Ana Roxanne',
+    albumArt: 'https://i.scdn.co/image/300',
     popularity: 12,
     durationMs: 210_000,
     indie: true,
@@ -313,6 +331,59 @@ test('a failed token request does not wedge the cache shut', async () => {
 
   assert.equal(tokenCalls, 2, 'the second attempt gets a fresh token request');
   assert.equal(tracks.length, 1, 'and the lookup recovers');
+});
+
+/**
+ * Album art rides along in the search response the resolver already makes, so
+ * it costs nothing extra. It is the halo carousel's raw material (v2.1 §3) and
+ * the only colour on an otherwise neutral page.
+ */
+test('pickAlbumArt takes the ~300px cover, not the 640 or the 64', () => {
+  assert.equal(pickAlbumArt(defaultImages), 'https://i.scdn.co/image/300');
+  assert.equal(ALBUM_ART_TARGET_WIDTH, 300);
+
+  // Nearest wins when there is no exact 300.
+  assert.equal(
+    pickAlbumArt([
+      { url: 'big', width: 640 },
+      { url: 'mid', width: 320 },
+      { url: 'small', width: 64 },
+    ]),
+    'mid',
+  );
+  // Only one size offered — take it rather than nothing.
+  assert.equal(pickAlbumArt([{ url: 'only', width: 640 }]), 'only');
+  // Dimensions missing entirely: fall back to the first usable URL.
+  assert.equal(pickAlbumArt([{ url: 'nodims' }]), 'nodims');
+});
+
+test('pickAlbumArt is null-safe for releases with no artwork', () => {
+  assert.equal(pickAlbumArt([]), null);
+  assert.equal(pickAlbumArt(null), null);
+  assert.equal(pickAlbumArt(undefined), null);
+  assert.equal(pickAlbumArt('not-an-array'), null);
+  assert.equal(pickAlbumArt([{ height: 300 }]), null, 'an entry with no url is not usable');
+  assert.equal(pickAlbumArt([{ url: '' }]), null);
+});
+
+test('resolve carries album art through, and null when Spotify omits it', async () => {
+  const { fetchImpl } = makeFetch([
+    ok(trackHit({ name: 'With Art', artists: ['A'] })),
+    ok(trackHit({ id: 'id2', name: 'No Art', artists: ['B'], images: [] })),
+    ok(trackHit({ id: 'id3', name: 'No Album', artists: ['C'], images: null })),
+  ]);
+  const resolver = createSpotifyResolver(deps(fetchImpl, { concurrency: 1 }));
+
+  const { tracks } = await resolver.resolve([
+    { title: 'With Art', artist: 'A' },
+    { title: 'No Art', artist: 'B' },
+    { title: 'No Album', artist: 'C' },
+  ]);
+
+  assert.equal(tracks.length, 3);
+  assert.equal(tracks[0].albumArt, 'https://i.scdn.co/image/300');
+  assert.equal(tracks[1].albumArt, null, 'an empty images array is not a crash');
+  assert.equal(tracks[2].albumArt, null, 'a missing album object is not a crash');
 });
 
 test('isIndie is grounded in popularity, never in what the model claims', () => {

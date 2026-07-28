@@ -3,3 +3,7 @@ node_modules/
 .vercel
 *.log
 .playwright-mcp/
+.photo-check/
+# Self-signed localhost certificate for `npm run dev:https` — machine-local,
+# regenerated on demand, never shared.
+certs/

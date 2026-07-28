@@ -8,8 +8,10 @@
  *
  *   node scripts/preview.mjs           → http://localhost:4321
  *   /                                  → home
- *   /score/rain-through-cedar-x3k9qf   → the score page
+ *   /score/rain-through-cedar-x3k9qf   → the score page (with cover art)
  *   /score/...?short=1                 → the "shorter than usual" variant
+ *   /score/...?art=0                   → artwork: [] — the carousel must be absent
+ *   /score/...?key=0                   → no CLIENT_ID — the export's tier-2 list, alone
  *   /anything-else                     → the error page (the app's own 404)
  *
  * The Spotify IDs below are real, so the embeds actually load.
@@ -17,6 +19,21 @@
 import express from 'express';
 import app from '../app.js';
 import { toScoreViewModel } from '../lib/viewModel.js';
+
+const ART = {
+  '00kPyLYWouR6nFC8yQY5Kb': 'https://i.scdn.co/image/ab67616d00001e02cdbd203adb7a08df121cf68a',
+  '08xxuQziMz80GTm8Zfxob1': 'https://i.scdn.co/image/ab67616d00001e02b6c87b79cebf7b1eb6965a9f',
+  '09umuNRfuF4eDY7wZtOif3': 'https://i.scdn.co/image/ab67616d00001e0257375032c6f0882cd73f42b7',
+  '0CxqhLRldWvPvU6ZlvrCjG': 'https://i.scdn.co/image/ab67616d00001e02d962ddac18e3a1457173356c',
+  '0gGoQFbwTakternKhDooJB': 'https://i.scdn.co/image/ab67616d00001e02341e7e27c7a379a018d691cc',
+  '04DOoRqn0mhGrVSXWWFZy5': 'https://i.scdn.co/image/ab67616d00001e02fab6c396db900e4820c94376',
+  '0dWVhN39VMnSGh0xiCKggR': 'https://i.scdn.co/image/ab67616d00001e025ec434c0aaf004cc62729a89',
+  '0H69sRjYmMXDyRGJWrcFtt': 'https://i.scdn.co/image/ab67616d00001e026d355cab4de672d9329392eb',
+  '06mrX3LFC65jmule6OhXrC': 'https://i.scdn.co/image/ab67616d00001e02778de06fac0c616417b49b6c',
+  '07KfFPBzpGkBNnsDKcg7o1': 'https://i.scdn.co/image/ab67616d00001e02d7390952edf7cda38a36ab6f',
+  '099WpHvgNrPDQjiCOHUtVO': 'https://i.scdn.co/image/ab67616d00001e02b8e78da92d1dc58688b7c5c7',
+  '0dOQLc1j61PCiiAlqr2D6R': 'https://i.scdn.co/image/ab67616d00001e02b63b39ab337167c0c5e5f8ed',
+};
 
 const track = (spotifyId, title, artist, durationMs, why, popularity) => ({
   spotifyId,
@@ -26,6 +43,7 @@ const track = (spotifyId, title, artist, durationMs, why, popularity) => ({
   why,
   popularity,
   indie: popularity < 40,
+  albumArt: ART[spotifyId] ?? null,
 });
 
 const DOC = {
@@ -165,13 +183,31 @@ const DOC = {
 const preview = express();
 
 preview.get('/score/:slug', (req, res, next) => {
+  const stripArt = req.query.art === '0';
   const doc = {
     ...DOC,
-    result: { ...DOC.result, short: req.query.short === '1' },
+    result: {
+      ...DOC.result,
+      short: req.query.short === '1',
+      phases: DOC.result.phases.map((phase) => ({
+        ...phase,
+        tracks: phase.tracks.map((t) => (stripArt ? { ...t, albumArt: null } : t)),
+      })),
+    },
   };
   const score = toScoreViewModel(doc);
-  app.render('score', { score, pageTitle: score.title, isScore: true }, (error, html) =>
-    error ? next(error) : res.type('html').send(html),
+  app.render(
+    'score',
+    {
+      score,
+      pageTitle: score.title,
+      isScore: true,
+      // `?key=0` renders the export's key-death state: no client id, so no
+      // button, and the tier-2 tracklist stands alone. It is the one state
+      // that cannot be reached by clicking, and the one most worth looking at.
+      spotifyClientId: req.query.key === '0' ? '' : process.env.CLIENT_ID || 'preview-client-id',
+    },
+    (error, html) => (error ? next(error) : res.type('html').send(html)),
   );
 });
 

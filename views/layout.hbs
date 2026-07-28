@@ -1,5 +1,5 @@
 {{!--
-  The frame. Visual system: "liner notes from an apothecary" (.impeccable.md).
+  The frame. Visual system: "gallery in morning fog" (.impeccable.md).
   Fonts are self-hosted latin subsets under public/fonts; the three that render
   above the fold are preloaded, the rest arrive with font-display: swap.
 --}}
@@ -10,10 +10,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{#if pageTitle}}{{pageTitle}} — vibin' out{{else}}vibin' out{{/if}}</title>
     <meta name="description" content="Turn a scent into a soundtrack." />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#F6F1E7" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#FAFAF7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161614" media="(prefers-color-scheme: dark)" />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    {{!--
+      Theme, before first paint. This is deliberately inline and deliberately
+      first: any stored choice has to be on <html> before the stylesheet paints
+      a single pixel, or the reader sees a frame of the wrong room. It is the
+      only blocking script on the page and it does one thing.
+
+      No stored choice → follow prefers-color-scheme, which the stylesheet also
+      does on its own, so a browser with scripting off still lands correctly.
+    --}}
+    <script>
+      (function () {
+        var t;
+        try {
+          t = localStorage.getItem('vibin-theme');
+        } catch (e) {
+          /* private mode, blocked storage — fall through to the system */
+        }
+        if (t !== 'light' && t !== 'dark') {
+          t =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+        // Also set color-scheme inline, so the browser paints its own canvas
+        // in the right room during the moment before app.css has arrived.
+        // Without this, a slate reader on a slow connection gets one white
+        // frame that the stylesheet is too late to prevent.
+        document.documentElement.style.colorScheme = t;
+      })();
+    </script>
 
     <link rel="preload" href="/fonts/fraunces-var-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/newsreader-var-latin.woff2" as="font" type="font/woff2" crossorigin />
@@ -27,14 +60,38 @@
       {{else}}
         <a class="wordmark-link" href="/"><span class="wordmark">vibin<span class="drop">&rsquo;</span> out</span></a>
       {{/if}}
+
+      {{!--
+        Two rooms, named. The one you are standing in is set in ink, heavier,
+        and underlined; the other is secondary — so the state survives
+        greyscale. theme.js keeps the aria-label in step with the choice.
+      --}}
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch between the mist and slate themes">
+        <span class="theme-opt" data-theme-opt="light">mist</span>
+        <span class="theme-slash" aria-hidden="true">/</span>
+        <span class="theme-opt" data-theme-opt="dark">slate</span>
+      </button>
     </header>
 
     <main>
       {{{body}}}
     </main>
 
+    <script src="/js/theme.js" defer></script>
+    {{!-- photo.js defines window.VibinPhoto; deferred scripts run in order, so
+          it is loaded before home.js, which attaches it. --}}
+    {{#if isHome}}<script src="/js/photo.js" defer></script>{{/if}}
     {{#if isHome}}<script src="/js/home.js" defer></script>{{/if}}
     {{#if isScore}}<script src="/js/score.js" defer></script>{{/if}}
     {{#if isScore}}<script src="/js/drydown.js" defer></script>{{/if}}
+    {{#if isScore}}<script src="/js/vendor/qrcode.js" defer></script>{{/if}}
+    {{#if isScore}}<script src="/js/share.js" defer></script>{{/if}}
+    {{!-- The export is an ES module (it imports the pure PKCE/decision core,
+          which `node --test` imports too — one implementation, two runtimes).
+          Modules defer by default, and a module that throws takes nothing else
+          with it, which is exactly the isolation the score page needs from a
+          feature designed to die first. --}}
+    {{#if isScore}}<script src="/js/export.js" type="module"></script>{{/if}}
+    {{#if isCallback}}<script src="/js/callback.js" type="module"></script>{{/if}}
   </body>
 </html>

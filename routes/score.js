@@ -9,11 +9,23 @@ import { rateLimitsCollection } from '../db.js';
 import { describeError, ERROR_CODES, ScoreError, STATUS_FOR_CODE } from '../lib/errors.js';
 import { generateScore } from '../lib/generateScore.js';
 import { clientIp, createRateLimiter } from '../lib/rateLimiter.js';
+import { remixRequestFrom, storedInputFor } from '../lib/remix.js';
 import { findScore, saveScore } from '../lib/scoreStore.js';
 import { readRemixSlug, validateScoreRequest } from '../lib/validation.js';
 import { toScoreViewModel } from '../lib/viewModel.js';
 
 const router = express.Router();
+
+/**
+ * Sized for one client-compressed photo (~1MB JPEG → ~1.4MB of base64) plus
+ * the rest of the body, with room for a browser that compresses less well than
+ * ours does. Deliberately mounted HERE and not app-wide: this is the only route
+ * that accepts a body at all, so no other path has to carry a 4MB ceiling.
+ */
+export const BODY_LIMIT = '4mb';
+
+const parseJson = express.json({ limit: BODY_LIMIT });
+const parseForm = express.urlencoded({ extended: false, limit: '16kb' });
 
 const limiter = createRateLimiter({
   getCollection: rateLimitsCollection,
@@ -24,7 +36,27 @@ function fail(res, code) {
   return res.status(STATUS_FOR_CODE[code] ?? 500).json({ error: code });
 }
 
-router.post('/api/score', async (req, res) => {
+/**
+ * Body parsing with its own door.
+ *
+ * A body-parser failure normally throws past the route into the app's error
+ * handler, which renders an HTML 500 — a fetch() caller would get a page of
+ * markup where it expected `{error}`. Catching it here keeps every failure on
+ * this route JSON, and turns an oversized body into `photo_too_large` rather
+ * than a raw 413 the client cannot phrase.
+ */
+function readBody(req, res, next) {
+  const handle = (error, done) => {
+    if (!error) return done();
+    if (error.type === 'entity.too.large') return fail(res, ERROR_CODES.PHOTO_TOO_LARGE);
+    return fail(res, ERROR_CODES.INVALID_INPUT);
+  };
+  parseJson(req, res, (jsonError) =>
+    handle(jsonError, () => parseForm(req, res, (formError) => handle(formError, next))),
+  );
+}
+
+router.post('/api/score', readBody, async (req, res) => {
   // A remix replays the stored input rather than echoing it through the
   // browser, so raw visitor text never has to live in the score page.
   let request;
@@ -38,19 +70,30 @@ router.post('/api/score', async (req, res) => {
       return fail(res, ERROR_CODES.COOLDOWN);
     }
     if (!original) return fail(res, ERROR_CODES.INVALID_INPUT);
-    request = validateScoreRequest({ input: original.input, ...original.options });
+    // Photo scores keep no photo, so a remix of one re-runs text-only from the
+    // stored reading — see lib/remix.js. A remix never carries an image.
+    request = validateScoreRequest(remixRequestFrom(original));
   } else {
     request = validateScoreRequest(req.body);
   }
 
   if (!request.ok) return fail(res, request.code);
 
+  const photo = remixOf ? null : (request.photo ?? null);
   const gate = await limiter.check(clientIp(req));
   if (!gate.allowed) return fail(res, ERROR_CODES.COOLDOWN);
 
   try {
-    const result = await generateScore(request.value);
-    const { slug } = await saveScore({ ...request.value, result });
+    const result = await generateScore({ ...request.value, photo });
+    // Field by field, not a spread: the photo lives in `photo`, and the only
+    // thing that may reach storage is the fact that there was one.
+    const { slug } = await saveScore({
+      input: storedInputFor(request.value.input, Boolean(photo)),
+      duration: request.value.duration,
+      discovery: request.value.discovery,
+      fromPhoto: Boolean(photo),
+      result,
+    });
     return res.status(200).json({ slug });
   } catch (error) {
     if (error instanceof ScoreError && error.code === ERROR_CODES.REFUSED) {
@@ -86,7 +129,23 @@ router.get('/score/:slug', async (req, res) => {
   // Scores are immutable — a remix mints a new slug — so this can sit at the
   // edge forever, which is what keeps share traffic off a free Atlas tier.
   res.set('Cache-Control', 'public, s-maxage=31536000, immutable');
-  return res.render('score', { score, pageTitle: score.title, isScore: true });
+  return res.render('score', {
+    score,
+    pageTitle: score.title,
+    isScore: true,
+    /**
+     * The export's public identifier. A client id is not a secret — PKCE
+     * exists precisely so a browser can hold one — and CLIENT_SECRET stays
+     * server-side where it does search.
+     *
+     * Absent (unset, or the key finally died) is a first-class state, not an
+     * error: the template renders the tier-2 list directly and no script ever
+     * looks at Spotify. Note that this value is baked into HTML the edge keeps
+     * for a year, so a *changed* id reaches old pages slowly — and an id that
+     * has stopped working simply fails into the same tier-2 list.
+     */
+    spotifyClientId: process.env.CLIENT_ID || '',
+  });
 });
 
 export default router;
