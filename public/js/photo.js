@@ -253,10 +253,15 @@
       drop.hidden = Boolean(current) || busy;
       preview.hidden = !current && !busy;
 
+      // Cleared unconditionally first: leaving a stale thumbnail or a stale
+      // `data-bytes` behind after a remove would let anything watching this
+      // element (a browser check, a future consumer) read the previous photo's
+      // size as the current one.
+      thumb.removeAttribute('src');
+      preview.removeAttribute('data-bytes');
+
       if (busy) {
         meta.textContent = 'taking it in…';
-        thumb.removeAttribute('src');
-        preview.removeAttribute('data-bytes');
         return;
       }
       if (current) {
@@ -265,7 +270,9 @@
           'photo ready · ' + current.width + '×' + current.height + ' · ' + readable(current.bytes);
         // Read by the browser check and by anyone auditing what we send.
         preview.setAttribute('data-bytes', String(current.bytes));
+        return;
       }
+      meta.textContent = '';
     }
 
     function clear(quiet) {

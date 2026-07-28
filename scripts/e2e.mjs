@@ -116,6 +116,19 @@ try {
   );
   check('a submit button is present', (await page.locator('button[type="submit"]').count()) >= 1);
 
+  // The photo drop is checked structurally only — a real photo generation is a
+  // second live LLM round trip, so it lives in `npm run check:photo` instead of
+  // doubling the cost of every E2E run.
+  check('the optional photo drop is present', (await page.locator('#photo-drop').count()) === 1);
+  check(
+    'the photo input accepts images',
+    (await page.locator('input#photo[type="file"]').getAttribute('accept')) === 'image/*',
+  );
+  check(
+    'the textarea is not required, so a photo alone can be submitted',
+    (await textarea.getAttribute('required')) === null,
+  );
+
   // ---- 2. submit the cheapest possible score ----------------------------
   console.log('\n[e2e] generating a score (this is a real LLM + Spotify round trip)');
   await textarea.fill('bright citrus cologne — bergamot, lemon peel, a clean shave');

@@ -587,6 +587,14 @@ a:hover {
   margin-top: 24px;
 }
 
+/* An author `display` declaration outranks the UA stylesheet's
+   `[hidden] { display: none }` no matter how weak its selector, so the parts
+   this field toggles have to opt back out explicitly — without this the empty
+   preview plate renders on every page load. */
+.photo-field [hidden] {
+  display: none;
+}
+
 /* Visually hidden but still focusable — the label does the clicking, the input
    does the keyboard. `display: none` would take it out of the tab order. */
 .photo-input {

@@ -166,6 +166,19 @@ test('the home page offers the photo drop as a second input mode', async () => {
   assert.ok(photoScript > -1 && photoScript < homeScript, 'photo.js is loaded before home.js');
 });
 
+/**
+ * Regression guard, found by a live browser run: while the textarea was
+ * `required`, native validation blocked every photo-only submit before the
+ * page's own handler — the only code that knows a photo is attached — could
+ * run. The feature was impossible in any real browser and no unit test could
+ * see it. The rule lives in home.js and lib/validation.js instead.
+ */
+test('the textarea is not required — a photo alone is a valid score', async () => {
+  const html = await render('home', { isHome: true, maxLength: 400 });
+  const textarea = /<textarea[\s\S]*?<\/textarea>/.exec(html)[0];
+  assert.equal(/\srequired[\s>]/.test(textarea), false, textarea);
+});
+
 /** Principle 6: a textarea, an optional photo drop, two pill rows, one button. */
 test('the input card still has exactly one call to action', async () => {
   const html = await render('home', { isHome: true, maxLength: 400 });
