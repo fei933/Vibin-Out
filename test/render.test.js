@@ -150,6 +150,30 @@ test('the share block ships with every score', async () => {
   assert.match(html, /\/js\/share\.js/);
 });
 
+test('the home page offers the photo drop as a second input mode', async () => {
+  const html = await render('home', { isHome: true, maxLength: 400 });
+
+  assert.match(html, /id="photo-drop"/);
+  assert.match(html, /<input type="file" id="photo" accept="image\/\*"/);
+  assert.match(html, /for="photo"/, 'the label makes the hidden input clickable');
+  assert.match(html, /drop a photo/);
+  assert.match(html, /id="photo-preview" hidden/, 'the preview only appears once one is chosen');
+  assert.match(html, /id="photo-remove"[^>]*aria-label="Remove the photo"/);
+  assert.match(html, /id="photo-note" hidden role="status"/);
+  // photo.js has to be parsed before home.js attaches it.
+  const photoScript = html.indexOf('/js/photo.js');
+  const homeScript = html.indexOf('/js/home.js');
+  assert.ok(photoScript > -1 && photoScript < homeScript, 'photo.js is loaded before home.js');
+});
+
+/** Principle 6: a textarea, an optional photo drop, two pill rows, one button. */
+test('the input card still has exactly one call to action', async () => {
+  const html = await render('home', { isHome: true, maxLength: 400 });
+  assert.equal((html.match(/type="submit"/g) ?? []).length, 1);
+  // The remove control is a button, but it is not a submit and it starts hidden.
+  assert.equal((html.match(/<button/g) ?? []).length, 3, 'theme toggle, remove, submit');
+});
+
 test('the theme toggle is in the header of every page', async () => {
   for (const html of [
     await renderScore(doc),

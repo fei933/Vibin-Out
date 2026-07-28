@@ -65,6 +65,89 @@ function fakeResolver({ failing = new Set(), partial = false } = {}) {
 
 const REQUEST = { input: 'bergamot, black tea, cedar', duration: 60, discovery: 'balanced' };
 
+const PHOTO = {
+  dataUrl: `data:image/jpeg;base64,${Buffer.alloc(48, 5).toString('base64')}`,
+  mediaType: 'image/jpeg',
+  bytes: 48,
+};
+
+/**
+ * The photo makes the PRIMARY call multimodal and nothing else. The backfill
+ * is already handed the interpretation, so re-sending the image would buy
+ * nothing and charge image tokens on every short score — and it would also
+ * re-run moderation on the picture for a second time. One image, one call.
+ */
+test('a photo rides the primary call only — never the backfill', async () => {
+  const calls = [];
+  const resolver = fakeResolver({ failing: new Set(['base 0', 'base 1']) });
+
+  await generateScore(
+    { ...REQUEST, photo: PHOTO },
+    {
+      callModel: async (options) => {
+        calls.push(options);
+        return calls.length === 1
+          ? modelScore()
+          : { phases: [{ name: 'base', tracks: [phase('base', 2, 0.3, 'extra').tracks[0]] }] };
+      },
+      resolver,
+    },
+  );
+
+  assert.equal(calls.length, 2, 'the misses forced a backfill');
+  assert.equal(calls[0].image, PHOTO.dataUrl, 'the primary call carries the image');
+  assert.equal(calls[1].image, undefined, 'the backfill does not');
+  assert.match(calls[0].system, /READING A SPACE/);
+  assert.equal(
+    /READING A SPACE/.test(calls[1].system),
+    false,
+    'and it is not told to read a photograph it was never given',
+  );
+});
+
+test('a text-only generation passes no image and no photo instructions', async () => {
+  const calls = [];
+  await generateScore(REQUEST, {
+    callModel: async (options) => {
+      calls.push(options);
+      return modelScore();
+    },
+    resolver: fakeResolver(),
+  });
+
+  assert.equal(calls[0].image, undefined);
+  assert.equal(calls[0].system, buildSystemPrompt(), 'byte-identical to the evaluated prompt');
+});
+
+test('a photo-only run reaches the model with no words and a photo-shaped prompt', async () => {
+  const calls = [];
+  const result = await generateScore(
+    { input: '', duration: 60, discovery: 'balanced', photo: PHOTO },
+    {
+      callModel: async (options) => {
+        calls.push(options);
+        return modelScore();
+      },
+      resolver: fakeResolver(),
+    },
+  );
+
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].prompt, /A visitor showed us their space\./);
+  assert.match(calls[0].prompt, /They gave no words/);
+  assert.equal(result.trackCount, 12, 'downstream is untouched by the input mode');
+});
+
+/** The result is what gets persisted — it must carry no image. */
+test('the assembled result never carries the photo forward', async () => {
+  const result = await generateScore(
+    { ...REQUEST, photo: PHOTO },
+    { callModel: async () => modelScore(), resolver: fakeResolver() },
+  );
+  assert.equal(JSON.stringify(result).includes('base64'), false);
+  assert.equal('photo' in result, false);
+});
+
 test('the happy path makes exactly one model call and fills every phase', async () => {
   let calls = 0;
   const resolver = fakeResolver();
