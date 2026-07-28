@@ -1,3 +1,23 @@
+{{!--
+  The halo: the resolved records' own covers, turning slowly. This is the only
+  colour on the page by design (.impeccable.md §3), which is exactly why it is
+  absent rather than approximated when there is no artwork — old scores,
+  art-less releases, the key-death degraded mode all render an empty array and
+  the page simply starts at its title. Decorative and inert: aria-hidden, no
+  pointer events, fixed height so late covers shift nothing.
+--}}
+{{#if score.artwork.length}}
+  <div class="halo" aria-hidden="true" style="--n: {{score.artwork.length}}">
+    <div class="halo-ring">
+      {{#each score.artwork}}
+        <div class="halo-tile" style="--i: {{@index}}">
+          <img src="{{this}}" alt="" width="112" height="112" loading="lazy" decoding="async" />
+        </div>
+      {{/each}}
+    </div>
+  </div>
+{{/if}}
+
 <article id="score" data-slug="{{score.slug}}">
   <header class="score-head">
     <h1>{{score.title}}</h1>
@@ -12,10 +32,11 @@
   </header>
 
   {{! Arc bar: widths come from the phase weights, precomputed as percentages.
-      The share is stated in words and figures as well as width and colour. }}
+      The share is stated in words and figures as well as width and tone. The
+      data-* pair is what the share card reads to redraw the arc on canvas. }}
   <ol class="arc" aria-label="The scent's evolution across the playlist">
     {{#each score.arc}}
-      <li class="arc-segment arc-{{name}}" style="width: {{pct}}%">
+      <li class="arc-segment arc-{{name}}" data-name="{{name}}" data-pct="{{pct}}" style="width: {{pct}}%">
         <span class="arc-swatch" aria-hidden="true"></span>
         <span class="arc-label"><span class="arc-name">{{name}}</span><span class="arc-pct">{{pct}}%</span></span>
       </li>
@@ -44,7 +65,7 @@
         {{#each tracks}}
           <li class="track{{#if indie}} indie{{/if}}">
             <div class="track-head">
-              <p class="track-name">{{title}}{{#if indie}}<span class="indie-find">indie find</span>{{/if}}</p>
+              <p class="track-name"><span class="track-title">{{title}}</span>{{#if indie}}<span class="indie-find">indie find</span>{{/if}}</p>
               <p class="track-artist">{{artist}}</p>
               <p class="why">{{why}}</p>
             </div>
@@ -70,6 +91,31 @@
       <button type="button" id="remix" data-slug="{{score.slug}}" class="button-quiet">Remix</button>
     </div>
     <p id="action-status" hidden aria-live="polite"></p>
+
+    {{!--
+      The share kit. A score is an artifact, not a session: it has an address,
+      a code you can tape next to the candle, and a card that carries the
+      reasoning into a message thread. Both are made in the browser — no API,
+      no tracking, nothing leaves the page. The plate stays hidden until the
+      encoder has actually drawn something; an empty frame reads as broken.
+    --}}
+    <section class="share" id="share" aria-labelledby="share-heading">
+      <figure class="qr-plate" id="qr-plate" hidden>
+        <canvas id="qr-canvas"></canvas>
+        <figcaption>scan to open</figcaption>
+      </figure>
+      <div class="share-copy">
+        <p class="share-eyebrow" id="share-heading">Take it with you</p>
+        <p class="share-note">
+          This score keeps its address. Point a phone at the code, or save the card
+          and drop it wherever you were going to describe this out loud.
+        </p>
+        <div class="action-row">
+          <button type="button" id="save-card" class="button-quiet">Save as card</button>
+        </div>
+      </div>
+    </section>
+
     <p class="closer"><a href="/">Keep the room going.</a></p>
   </footer>
 </article>
