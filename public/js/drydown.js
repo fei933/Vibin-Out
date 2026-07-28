@@ -1,18 +1,21 @@
-/* The drydown scroll — the one signature motion (.impeccable.md §4).
+/* The drydown scroll — one of the two permitted motions (.impeccable.md §5).
  *
- * As the reader moves from top notes to base notes, the page's accent
- * evaporates the way the scent does: citrine -> terracotta -> resin. It drives
- * two custom properties:
+ * As the reader moves from top notes to base notes, the page's accent settles
+ * the way the scent does. In v2.1 that journey is TONAL DEPTH, not hue: in
+ * mist it darkens vapour → stone → char; in slate it runs the other way, the
+ * scent emerging out of the dark. Two custom properties carry it:
  *
- *   --accent       the raw palette, for graphics only (the wordmark's
- *                  apostrophe, which is logotype and therefore exempt from
- *                  contrast, and the arc's marker)
- *   --accent-text  the same hues darkened until they clear AA 4.5:1 on paper,
- *                  for anything a reader has to actually read (link
- *                  underlines, the phase eyebrows, track numbers)
+ *   --accent       the raw tone, for graphics only (the arc's baseline rule).
+ *                  The wordmark is deliberately NOT on this ramp — see the
+ *                  note beside .wordmark .drop in app.css.
+ *   --accent-text  the AA-safe twin, for anything a reader has to actually
+ *                  read (link underlines, phase eyebrows, track numbers)
  *
- * Both ramps darken monotonically, so every interpolated value between two
- * AA-safe stops is itself AA-safe.
+ * The stops are NOT hardcoded here. They are read off the six --ramp-* tokens
+ * in app.css, which is the single source of truth for the palette in both
+ * themes — so a theme flip is a re-read, not a second copy of the colours.
+ * Both ramps move monotonically in luminance, so every interpolated value
+ * between two AA-safe stops is itself AA-safe.
  *
  * Reduced motion: no scroll listener at all. An IntersectionObserver snaps the
  * accent to the phase in view and CSS transitions crossfade it.
@@ -23,17 +26,50 @@
   var segments = Array.prototype.slice.call(document.querySelectorAll('.arc-segment'));
   if (phases.length < 2) return;
 
-  var GRAPHIC = [
-    [217, 164, 65], // citrine  #D9A441
-    [184, 85, 47], // terracotta #B8552F
-    [74, 59, 42], // resin    #4A3B2A
-  ];
-  var TEXT = [
-    [138, 101, 32], // #8A6520 — 4.7:1 on paper
-    [160, 72, 31], // #A0481F — 5.4:1
-    [107, 78, 46], // #6B4E2E — 6.8:1
-  ];
   var NAMES = ['top', 'heart', 'base'];
+
+  /* --- the ramps, read from CSS ------------------------------------------- */
+
+  function parseColor(value) {
+    var s = String(value).trim();
+    var m = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (m) {
+      var h = m[1];
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      return [
+        parseInt(h.slice(0, 2), 16),
+        parseInt(h.slice(2, 4), 16),
+        parseInt(h.slice(4, 6), 16),
+      ];
+    }
+    var n = s.match(/-?[\d.]+/g);
+    if (n && n.length >= 3) return [Number(n[0]), Number(n[1]), Number(n[2])];
+    return null;
+  }
+
+  var GRAPHIC = [];
+  var TEXT = [];
+
+  function readRamps() {
+    var style = window.getComputedStyle(root);
+    var graphic = [];
+    var text = [];
+    for (var i = 0; i < 3; i += 1) {
+      var g = parseColor(style.getPropertyValue('--ramp-graphic-' + i));
+      var t = parseColor(style.getPropertyValue('--ramp-text-' + i));
+      if (!g || !t) return false;
+      graphic.push(g);
+      text.push(t);
+    }
+    GRAPHIC = graphic;
+    TEXT = text;
+    return true;
+  }
+
+  /* If the tokens cannot be read (very old browser, blocked stylesheet), leave
+     --accent alone: the CSS defaults already point at the opening note, so the
+     page is correct, just not scroll-linked. */
+  if (!readRamps()) return;
 
   function rgb(c) {
     return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
@@ -52,8 +88,10 @@
   }
 
   var lastActive = -1;
+  var lastProgress = 0;
 
   function apply(p) {
+    lastProgress = p;
     root.style.setProperty('--accent', mix(GRAPHIC, p));
     root.style.setProperty('--accent-text', mix(TEXT, p));
 
@@ -68,6 +106,12 @@
       else segments[i].removeAttribute('data-active');
     }
   }
+
+  /* The ramp inverts between themes, and --accent is an inline style that
+     would otherwise keep the old room's tone after a flip. */
+  window.addEventListener('vibin:themechange', function () {
+    if (readRamps()) apply(lastProgress);
+  });
 
   /* --- scroll-linked (default) -------------------------------------------- */
 
@@ -129,9 +173,6 @@
   }
 
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-  function start() {
-    if (reduced.matches) crossfade();
-    else scrollLinked();
-  }
-  start();
+  if (reduced.matches) crossfade();
+  else scrollLinked();
 })();
