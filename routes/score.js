@@ -6,7 +6,7 @@
  */
 import express from 'express';
 import { rateLimitsCollection } from '../db.js';
-import { ERROR_CODES, ScoreError, STATUS_FOR_CODE } from '../lib/errors.js';
+import { describeError, ERROR_CODES, ScoreError, STATUS_FOR_CODE } from '../lib/errors.js';
 import { generateScore } from '../lib/generateScore.js';
 import { clientIp, createRateLimiter } from '../lib/rateLimiter.js';
 import { findScore, saveScore } from '../lib/scoreStore.js';
@@ -17,7 +17,7 @@ const router = express.Router();
 
 const limiter = createRateLimiter({
   getCollection: rateLimitsCollection,
-  onError: (error) => console.error('[ratelimit]', error?.message),
+  onError: (error) => console.error('[ratelimit]', describeError(error)),
 });
 
 function fail(res, code) {
@@ -34,7 +34,7 @@ router.post('/api/score', async (req, res) => {
     try {
       original = await findScore(remixOf);
     } catch (error) {
-      console.error('[remix]', error?.message);
+      console.error('[remix]', describeError(error));
       return fail(res, ERROR_CODES.COOLDOWN);
     }
     if (!original) return fail(res, ERROR_CODES.INVALID_INPUT);
@@ -57,7 +57,7 @@ router.post('/api/score', async (req, res) => {
       // A refusal is a real answer, not a failure — the call was spent.
       return fail(res, ERROR_CODES.REFUSED);
     }
-    console.error('[score]', error?.message);
+    console.error('[score]', describeError(error));
     await gate.refund(); // a broken generation must not cost a visitor a slot
     return fail(res, ERROR_CODES.GENERATION_FAILED);
   }
@@ -68,7 +68,7 @@ router.get('/score/:slug', async (req, res) => {
   try {
     doc = await findScore(String(req.params.slug).toLowerCase());
   } catch (error) {
-    console.error('[score-render]', error?.message);
+    console.error('[score-render]', describeError(error));
     return res.status(503).render('error', {
       title: 'the still is cooling down',
       message: 'Scores are resting for a moment. Try again shortly.',
