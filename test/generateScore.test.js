@@ -89,6 +89,40 @@ test('the happy path makes exactly one model call and fills every phase', async 
   assert.equal(result.phases[0].tracks[0].phaseIndex, undefined, 'internal fields are stripped');
 });
 
+test('album art survives assembly into the result that gets persisted', async () => {
+  const withArt = {
+    async resolve(candidates) {
+      return {
+        tracks: candidates.map((c, i) => ({
+          ...c,
+          spotifyId: `sp-${i}`,
+          albumArt: i % 4 === 0 ? null : `https://i.scdn.co/image/${i}`,
+          popularity: 30,
+          durationMs: 300_000,
+          indie: false,
+        })),
+        misses: [],
+        partial: false,
+      };
+    },
+  };
+
+  const result = await generateScore(REQUEST, {
+    callModel: async () => modelScore(),
+    resolver: withArt,
+    backfillReserveMs: Infinity,
+  });
+
+  const tracks = result.phases.flatMap((p) => p.tracks);
+  assert.ok(
+    tracks.every((t) => 'albumArt' in t),
+    'every assembled track carries the field, even when null',
+  );
+  assert.equal(tracks[0].albumArt, null, 'an art-less release stays null through assembly');
+  assert.ok(tracks.filter((t) => t.albumArt).length > 0);
+  assert.equal(tracks[1].albumArt, 'https://i.scdn.co/image/1');
+});
+
 test('a structural violation earns exactly one retry, then succeeds', async () => {
   const answers = [modelScore({ phases: [phase('top', 3, 1)] }), modelScore()];
   let calls = 0;
